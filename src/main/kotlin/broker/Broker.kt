@@ -1,30 +1,24 @@
 package broker
 
+import broker.queue.DefaultExtendedQueue
 import kotlinx.coroutines.experimental.CommonPool
 import kotlinx.coroutines.experimental.launch
-import kotlinx.coroutines.experimental.runBlocking
 import protocol.ClientType
 import protocol.Message
 import util.decode
-import util.encode
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.io.PrintWriter
 import java.net.ServerSocket
 import java.net.Socket
-import java.util.concurrent.LinkedBlockingQueue
+import java.util.*
+
 
 class Broker {
-    private val queue = LinkedBlockingQueue<Message>()
-
-    private fun backupQueue() {
-        println("BACKUP COMPLETED "+queue.encode())
-    }
-
+    private val timer: Timer = Timer()
+    private val queue = DefaultExtendedQueue<Message>("main")
 
     private fun handleClient(client: Socket) {
-        println("handling client...")
-        backupQueue()
         val reader = BufferedReader(InputStreamReader(client.inputStream))
         val writer = PrintWriter(client.outputStream)
         val msg = reader.readLine().decode()
@@ -49,8 +43,13 @@ class Broker {
     fun runServer() {
         println("Starting server...")
         val server = ServerSocket(14141)
+        timer.schedule(object : TimerTask() {
+            override fun run() {
+                println("trying to backup ${queue.name} (${queue.size} items)... in "+Thread.currentThread().name)
+                queue.backUp(false)
+            }
+        }, 5000, 5000)
         while (true) {
-            println("Waiting for a client...")
             val client = server.accept()
             launch(CommonPool) {
                 handleClient(client)
