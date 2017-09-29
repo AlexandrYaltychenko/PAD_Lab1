@@ -1,11 +1,11 @@
 package broker
 
-import broker.queue.DefaultExtendedQueue
+import broker.router.DefaultRouter
+import broker.router.Router
 import kotlinx.coroutines.experimental.CommonPool
 import kotlinx.coroutines.experimental.launch
 import protocol.ClientType
-import protocol.Message
-import util.decode
+import util.asRoutedMessage
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.io.PrintWriter
@@ -16,25 +16,24 @@ import java.util.*
 
 class Broker {
     private val timer: Timer = Timer()
-    private val queue = DefaultExtendedQueue<Message>("main")
+    private val router : Router = DefaultRouter()
 
     private fun handleClient(client: Socket) {
         val reader = BufferedReader(InputStreamReader(client.inputStream))
         val writer = PrintWriter(client.outputStream)
-        val msg = reader.readLine().decode()
+        val msg = reader.readLine().asRoutedMessage()
         if (msg.clientType == ClientType.RECEIVER) {
-            println("CONNECTED RECEIVER " + msg.clientUid)
-            if (queue.isEmpty())
-                writer.println(Message(clientType = ClientType.SERVER, msg = "IDLE"))
-            else
-                writer.println(queue.poll())
+            //println("GOT MSG " + msg)
+            //println("CONNECTED RECEIVER " + msg.clientUid)
+            writer.println(router.get(msg.scope))
             writer.flush()
         } else if (msg.clientType == ClientType.SENDER) {
-            println("CONNECTED SENDER " + msg.clientUid)
-            //println("GOT MSG " + msg.msg)
-            queue.add(msg)
+            //println("CONNECTED SENDER " + msg.clientUid)
+            //println("GOT MSG " + msg)
+            //println("SCOPE = ${msg.scope}")
+            router.put(msg)
         }
-        println("THREAD = " + Thread.currentThread().name)
+        //println("THREAD = " + Thread.currentThread().name)
         writer.close()
         reader.close()
         client.close()
@@ -42,11 +41,13 @@ class Broker {
 
     fun runServer() {
         println("Starting server...")
+        Runtime.getRuntime().addShutdownHook(Thread {
+            router.onStop()
+        })
         val server = ServerSocket(14141)
         timer.schedule(object : TimerTask() {
             override fun run() {
-                println("trying to backup ${queue.name} (${queue.size} items)... in "+Thread.currentThread().name)
-                queue.backUp(false)
+                router.cron()
             }
         }, 5000, 5000)
         while (true) {

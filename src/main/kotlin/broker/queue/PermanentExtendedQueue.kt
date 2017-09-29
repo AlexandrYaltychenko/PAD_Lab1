@@ -1,38 +1,23 @@
 package broker.queue
 
-import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
-import com.oracle.javafx.jmx.json.JSONException
 import java.io.File
 import java.io.IOException
 import java.util.*
 import java.util.concurrent.LinkedBlockingQueue
 
 
-class DefaultExtendedQueue<T> constructor(private val queue: Queue<T>, override val name: String, tryToReload: Boolean = true) : ExtendedQueue<T>, Queue<T> by queue {
-    constructor(name: String, tryToReload: Boolean = true) : this(LinkedBlockingQueue<T>(), name, tryToReload)
+class PermanentExtendedQueue<T>(queue: Queue<T>, name: String, tryToReload: Boolean = true, type : TypeToken<Queue<T>>) :
+        AbstractExtendedQueue<T>(queue,name), ExtendedBackupedQueue<T> {
+    constructor(name: String, tryToReload: Boolean = true, clazz : TypeToken<Queue<T>>) : this(LinkedBlockingQueue<T>(), name, tryToReload, clazz)
 
     init {
         if (tryToReload)
-            load("$name.txt")
+            load("$name.txt", type)
     }
 
-    override fun encode(): String {
-        return Gson().toJson(queue)
-    }
-
-    override fun decode(str: String): Boolean {
-        val turnsType = object : TypeToken<Queue<T>>() {}.type
-        return try {
-            val loaded: Queue<T> = Gson().fromJson<Queue<T>>(str, turnsType)
-            queue.addAll(loaded)
-            println("$name successfully deserialized (${queue.size} items)")
-            true
-        } catch (e: JSONException) {
-            println("$name deserialization failed")
-            false
-        }
-    }
+    override val type: QueueType
+        get() = QueueType.PERMANENT
 
     override fun offer(e: T): Boolean {
         afterBackupItemsCount++
@@ -68,9 +53,13 @@ class DefaultExtendedQueue<T> constructor(private val queue: Queue<T>, override 
         }
     }
 
-    override fun load(fileName: String) {
+    override fun load(fileName: String, clazz : TypeToken<Queue<T>>) {
         println("trying to load $name queue from $name.txt...")
-        decode(File(fileName).bufferedReader().use { it.readText() })
+        try {
+            decode(File(fileName).bufferedReader().use { it.readText() }, clazz)
+        } catch (e : IOException){
+            println("loading failed...")
+        }
     }
 
     override var backUpItemsLimit: Int = DEFAULT_BACKUP_LIMIT
