@@ -16,7 +16,7 @@ class AlarmSender (private val clientId : String): Sender {
         val uuid = UUID.randomUUID()
         val client = Socket("127.0.0.1", 14141)
         val writer = PrintWriter(client.outputStream)
-        val msg = RoutedMessage(clientType = ClientType.SENDER, clientUid = clientId,msg = UUID.randomUUID().toString(), scope = "alarm")
+        val msg = RoutedMessage(clientType = ClientType.SENDER, clientUid = clientId, payload = UUID.randomUUID().toString(), topic = "alarm")
         writer.println(msg.encode())
         writer.println(uuid)
         writer.flush()

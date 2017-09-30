@@ -5,7 +5,6 @@ import kotlinx.coroutines.experimental.delay
 import kotlinx.coroutines.experimental.launch
 import kotlinx.coroutines.experimental.runBlocking
 import protocol.ClientType
-import protocol.Message
 import protocol.RoutedMessage
 import util.encode
 import java.io.BufferedReader
@@ -23,7 +22,7 @@ class AlarmReceiver (private val clientId : String) : Receiver{
             val client = Socket("127.0.0.1", 14141)
             val reader = BufferedReader(InputStreamReader(client.inputStream))
             val writer = PrintWriter(client.outputStream)
-            val msg = RoutedMessage(ClientType.RECEIVER, clientUid = clientUid, scope = "alarm")
+            val msg = RoutedMessage(ClientType.RECEIVER, clientUid = clientUid, topic = "alarm")
             writer.println(msg.encode())
             writer.flush()
             val task = reader.readLine()

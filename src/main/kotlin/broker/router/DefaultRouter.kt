@@ -17,10 +17,10 @@ class DefaultRouter : Router {
     }
 
     override fun put(msg: RoutedMessage) {
-        val target: ExtendedQueue<RoutedMessage> = map[msg.scope] ?: run {
-            println("creating temporary queue ${msg.scope}")
-            val queue = QueueFactory.createQueue<RoutedMessage>(QueueType.TEMPORARY, msg.scope)
-            map.put(msg.scope, queue)
+        val target: ExtendedQueue<RoutedMessage> = map[msg.topic] ?: run {
+            println("creating temporary queue ${msg.topic}")
+            val queue = QueueFactory.createQueue<RoutedMessage>(QueueType.TEMPORARY, msg.topic)
+            map.put(msg.topic, queue)
             queue
         }
         target.add(msg)
@@ -32,9 +32,9 @@ class DefaultRouter : Router {
             if (queue.size > 0)
                 queue.poll()
             else
-                RoutedMessage(ClientType.SERVER, scope = scope, msg = "IDLE")
+                RoutedMessage(ClientType.SERVER, topic = scope, payload = "IDLE")
         else
-            RoutedMessage(ClientType.SERVER, scope = scope, msg = "error! no such queue: $scope")
+            RoutedMessage(ClientType.SERVER, topic = scope, payload = "error! no such queue: $scope")
     }
 
     override fun cron() {

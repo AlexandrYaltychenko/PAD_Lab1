@@ -23,14 +23,14 @@ class Broker {
         val writer = PrintWriter(client.outputStream)
         val msg = reader.readLine().asRoutedMessage()
         if (msg.clientType == ClientType.RECEIVER) {
-            //println("GOT MSG " + msg)
-            //println("CONNECTED RECEIVER " + msg.clientUid)
-            writer.println(router.get(msg.scope))
+            //println("GOT MSG " + payload)
+            //println("CONNECTED RECEIVER " + payload.clientUid)
+            writer.println(router.get(msg.topic))
             writer.flush()
         } else if (msg.clientType == ClientType.SENDER) {
-            //println("CONNECTED SENDER " + msg.clientUid)
-            //println("GOT MSG " + msg)
-            //println("SCOPE = ${msg.scope}")
+            //println("CONNECTED SENDER " + payload.clientUid)
+            //println("GOT MSG " + payload)
+            //println("SCOPE = ${payload.topic}")
             router.put(msg)
         }
         //println("THREAD = " + Thread.currentThread().name)
