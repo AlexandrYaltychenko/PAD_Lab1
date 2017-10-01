@@ -1,10 +1,13 @@
 package broker
 
+import broker.pool.DefaultSubscriber
+import broker.route.PermanentRoute
 import broker.router.DefaultRouter
 import broker.router.Router
 import kotlinx.coroutines.experimental.CommonPool
 import kotlinx.coroutines.experimental.launch
 import protocol.ClientType
+import protocol.RoutedMessage
 import util.asRoutedMessage
 import java.io.BufferedReader
 import java.io.InputStreamReader
@@ -16,36 +19,46 @@ import java.util.*
 
 class Broker {
     private val timer: Timer = Timer()
-    private val router : Router = DefaultRouter()
+    /*private val router : Router = DefaultRouter()
 
     private fun handleClient(client: Socket) {
         val reader = BufferedReader(InputStreamReader(client.inputStream))
         val writer = PrintWriter(client.outputStream)
         val msg = reader.readLine().asRoutedMessage()
         if (msg.clientType == ClientType.RECEIVER) {
-            //println("GOT MSG " + msg)
-            //println("CONNECTED RECEIVER " + msg.clientUid)
             writer.println(router.get(msg.scope))
             writer.flush()
         } else if (msg.clientType == ClientType.SENDER) {
-            //println("CONNECTED SENDER " + msg.clientUid)
-            //println("GOT MSG " + msg)
-            //println("SCOPE = ${msg.scope}")
             router.put(msg)
         }
-        //println("THREAD = " + Thread.currentThread().name)
         writer.close()
         reader.close()
         client.close()
+    }*/
+
+    fun testPS(){
+        val mainScope = ScopeFactory.fromString("root")
+        val root = PermanentRoute(mainScope,"root")
+        var msg = RoutedMessage(msg = "Msg1", scope = "google.jora")
+        root.putMessage(ScopeFactory.fromString(msg.scope),msg)
+        root.putMessage(ScopeFactory.fromString(msg.scope),msg)
+        msg = RoutedMessage(msg = "Msg2", scope = "apple.com.imac")
+        root.putMessage(ScopeFactory.fromString(msg.scope),msg)
+        val subscriber = DefaultSubscriber(ScopeFactory.fromString("root.apple.com"))
+        root.subscribe(subscriber)
+        println()
+        root.print()
+
     }
 
     fun runServer() {
         println("Starting server...")
-        Runtime.getRuntime().addShutdownHook(Thread {
+        /*Runtime.getRuntime().addShutdownHook(Thread {
             router.onStop()
-        })
+        })*/
         val server = ServerSocket(14141)
-        timer.schedule(object : TimerTask() {
+        testPS()
+        /*timer.schedule(object : TimerTask() {
             override fun run() {
                 router.cron()
             }
@@ -55,6 +68,6 @@ class Broker {
             launch(CommonPool) {
                 handleClient(client)
             }
-        }
+        }*/
     }
 }
