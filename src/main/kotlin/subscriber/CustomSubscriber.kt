@@ -13,7 +13,7 @@ import java.io.PrintWriter
 import java.net.Socket
 import java.util.*
 
-class AlarmExternalSubscriber(private val clientId : String) : ExternalSubscriber {
+class CustomSubscriber(private val clientId : String, private val scope : String) : ExternalSubscriber {
     private suspend fun processTask() {
         val client = Socket("127.0.0.1", 14141)
         val reader = BufferedReader(InputStreamReader(client.inputStream))
@@ -21,13 +21,13 @@ class AlarmExternalSubscriber(private val clientId : String) : ExternalSubscribe
         val clientUid = UUID.randomUUID().toString()
         while (true) {
             println("asking for a message...")
-            val msg = RoutedMessage(ClientType.SUBSCRIBER, clientUid = clientUid, scope = "Apple.*")
+            val msg = RoutedMessage(ClientType.SUBSCRIBER, clientUid = clientUid, scope = scope)
             writer.println(msg.encode())
             writer.flush()
             val task = reader.readLine()
             println("PROCESSED " + task)
-            client.close()
         }
+        client.close()
     }
 
     override suspend fun run() = runBlocking{

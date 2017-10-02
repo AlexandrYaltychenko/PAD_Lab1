@@ -10,14 +10,14 @@ import java.io.PrintWriter
 import java.net.Socket
 import java.util.*
 
-class AlarmPublisher(private val clientId : String): Publisher {
+class CustomPublisher(private val clientId : String, private val scope : String): Publisher {
     private suspend fun makeTask() {
         println("making task...")
         val uuid = UUID.randomUUID()
         val client = Socket("127.0.0.1", 14141)
         val writer = PrintWriter(client.outputStream)
         val msg = RoutedMessage(clientType = ClientType.PUBLISHER, clientUid = clientId,msg = UUID.randomUUID().toString(),
-                scope = "Apple.iPad.Display")
+                scope = scope)
         writer.println(msg.encode())
         writer.println(uuid)
         writer.flush()

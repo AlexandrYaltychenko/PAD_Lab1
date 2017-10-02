@@ -4,8 +4,6 @@ import broker.pool.DefaultSubscriber
 import broker.pool.Subscriber
 import broker.route.PermanentRoute
 import broker.route.Route
-import broker.router.DefaultRouter
-import broker.router.Router
 import kotlinx.coroutines.experimental.CommonPool
 import kotlinx.coroutines.experimental.launch
 import protocol.ClientType
@@ -19,7 +17,7 @@ import java.net.Socket
 import java.util.*
 
 
-class Broker {
+class Broker : SubscriberPool{
     private val timer: Timer = Timer()
     private val root: Route = PermanentRoute(ScopeFactory.fromString("root"), "root")
 
@@ -41,7 +39,7 @@ class Broker {
     }
 
     private suspend fun handleSubscriber(reader: BufferedReader, writer: PrintWriter, client: Socket, scope: Scope) {
-        val subscriber: Subscriber = DefaultSubscriber(scope)
+        val subscriber: Subscriber = DefaultSubscriber(this,scope)
         root.subscribe(subscriber)
         subscriber.handle(client, reader, writer)
     }
@@ -54,7 +52,7 @@ class Broker {
         root.putMessage(ScopeFactory.fromString(msg.scope), msg)
         msg = RoutedMessage(msg = "Msg2", scope = "apple.com.imac")
         root.putMessage(ScopeFactory.fromString(msg.scope), msg)
-        val subscriber = DefaultSubscriber(ScopeFactory.fromString("root.apple.*"))
+        val subscriber = DefaultSubscriber(this,ScopeFactory.fromString("root.apple.*"))
         root.subscribe(subscriber)
         println()
         root.print()
@@ -66,6 +64,15 @@ class Broker {
         root.print()
     }
 
+    override fun subscribe(subscriber: Subscriber) {
+        root.subscribe(subscriber)
+    }
+
+    override fun unsubscribe(subscriber: Subscriber) {
+        println("unsubscribing...")
+        root.unsubscribe(subscriber)
+    }
+
     suspend fun runServer() {
         println("Starting server...")
         /*Runtime.getRuntime().addShutdownHook(Thread {
@@ -75,8 +82,11 @@ class Broker {
         timer.schedule(object : TimerTask() {
             override fun run() {
                 //router.cron()
+                println()
+                root.print()
+                println()
             }
-        }, 5000, 5000)
+        }, 1000, 1000)
         while (true) {
             val client = server.accept()
             launch(CommonPool) {

@@ -5,6 +5,8 @@ import broker.ScopeFactory
 import broker.ScopeRelationship
 import broker.pool.Subscriber
 import broker.queue.ExtendedQueue
+import kotlinx.coroutines.experimental.CommonPool
+import kotlinx.coroutines.experimental.launch
 import protocol.RoutedMessage
 import java.util.concurrent.ConcurrentHashMap
 
@@ -12,7 +14,7 @@ abstract class AbstractRoute(override val scope: Scope, override val name: Strin
     protected val routes: MutableMap<String, Route> = ConcurrentHashMap()
     protected abstract val messages: ExtendedQueue<RoutedMessage>
     override val subscribers: MutableSet<Subscriber> = mutableSetOf()
-    private val transcribers : MutableSet<Subscriber> = mutableSetOf()
+    private val transcribers: MutableSet<Subscriber> = mutableSetOf()
 
     override fun getMessages(scope: Scope): List<RoutedMessage> {
         val msgList = mutableListOf<RoutedMessage>()
@@ -76,9 +78,12 @@ abstract class AbstractRoute(override val scope: Scope, override val name: Strin
         //println("subscribe $name to ${publisher.scopes} relationship = $relationship")
         if (relationship == ScopeRelationship.ABORT)
             return
-        if (relationship != ScopeRelationship.NOT_INCLUDED)
+        if (relationship != ScopeRelationship.NOT_INCLUDED) {
             subscribers.add(subscriber)
-        else
+            launch(CommonPool){
+                notifySubscribers()
+            }
+        } else
             transcribers.add(subscriber)
         if (relationship != ScopeRelationship.FINAL)
             routes.values.map {
@@ -102,13 +107,12 @@ abstract class AbstractRoute(override val scope: Scope, override val name: Strin
     protected suspend fun notifySubscribers() {
         if (messages.size == 0 || subscribers.size == 0)
             return
-        val iterator = messages.iterator()
-        while (iterator.hasNext()){
-            val msg = iterator.next()
-            for (subscriber in subscribers){
+        println("notifying ${subscribers.size} subs with ${messages.size}")
+        while (messages.isNotEmpty()) {
+            val msg = messages.remove()
+            for (subscriber in subscribers) {
                 subscriber.messagePublished(scope, msg)
             }
-            iterator.remove()
         }
     }
 
