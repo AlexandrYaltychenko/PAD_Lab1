@@ -12,8 +12,9 @@ interface Route {
     val subscribers : Set<Subscriber>
     val scope : Scope
     fun getMessages(scope : Scope) : List<RoutedMessage>
-    fun putMessage(scope : Scope, msg : RoutedMessage)
+    suspend fun putMessage(scope : Scope, msg : RoutedMessage)
     fun subscribe(subscriber: Subscriber)
     fun unsubscribe(subscriber: Subscriber)
     fun print()
+    fun cron()
 }

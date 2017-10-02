@@ -37,11 +37,12 @@ class RouteScope constructor(scope: String) : Scope {
     }
 
     override fun belongsTo(scopes: Collection<Scope>): ScopeRelationship {
+        //println("CALLED BELONGS")
         var current = ScopeRelationship.ABORT
         for (scope in scopes) {
             val relationship = compatible(scope)
-            println("GOT = "+relationship)
-            when (compatible(scope)) {
+            //println("GOT = " + relationship)
+            when (relationship) {
                 ScopeRelationship.NOT_INCLUDED ->
                     if (current == ScopeRelationship.ABORT)
                         current = ScopeRelationship.NOT_INCLUDED
@@ -67,24 +68,35 @@ class RouteScope constructor(scope: String) : Scope {
      * @return ScopeRelationship
      */
     override fun compatible(scope: Scope): ScopeRelationship {
-        println("checking compatibility ${this.toList()} with ${scope.toList()}")
+        //println("checking compatibility ${this.toList()} with ${scope.toList()}")
         val scopeList = toList()
         val anotherScopeList = scope.toList()
-        for (it in 0 until scopeList.size - 1) {
+        for (it in 0 until minOf(scopeList.size, anotherScopeList.size)) {
+            //println("it = "+it)
             if (scopeList[it] != "*" &&
                     anotherScopeList[it] != "*" &&
                     scopeList[it] != anotherScopeList[it]) {
-                println("ABORTING ${scopeList[it]} - ${anotherScopeList[it]}")
+                //println("ABORTING ${scopeList[it]} - ${anotherScopeList[it]}")
                 return ScopeRelationship.ABORT
             }
         }
-        if (anotherScopeList.size == scopeList.size)
-            if (anotherScopeList[scopeList.size - 1] != "*")
-                return ScopeRelationship.FINAL
-            else
+        if (scopeList.size == anotherScopeList.size) {
+            if (anotherScopeList.last() == "*")
                 return ScopeRelationship.INCLUDED
-        else
+            else
+                return ScopeRelationship.FINAL
+        } else if (scopeList.size > anotherScopeList.size) {
+            if (anotherScopeList.last() == "*")
+                return ScopeRelationship.INCLUDED
+            else
+                return ScopeRelationship.ABORT
+        } else {
             return ScopeRelationship.NOT_INCLUDED
+            /*if (anotherScopeList[scopeList.lastIndex] == "*")
+                return ScopeRelationship.INCLUDED
+            else
+                return ScopeRelationship.NOT_INCLUDED*/
+        }
     }
 
     override fun equals(other: Any?): Boolean {

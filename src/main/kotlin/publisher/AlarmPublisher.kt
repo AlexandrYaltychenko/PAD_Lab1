@@ -1,22 +1,23 @@
-package sender
+package publisher
 
 import kotlinx.coroutines.experimental.CommonPool
 import kotlinx.coroutines.experimental.delay
 import kotlinx.coroutines.experimental.launch
 import protocol.ClientType
-import protocol.Message
+import protocol.RoutedMessage
 import util.encode
 import java.io.PrintWriter
 import java.net.Socket
 import java.util.*
 
-class ClassicSender constructor(private val clientId : String): Sender {
+class AlarmPublisher(private val clientId : String): Publisher {
     private suspend fun makeTask() {
         println("making task...")
         val uuid = UUID.randomUUID()
         val client = Socket("127.0.0.1", 14141)
         val writer = PrintWriter(client.outputStream)
-        val msg = Message(clientType = ClientType.SENDER, clientUid = clientId,msg = UUID.randomUUID().toString())
+        val msg = RoutedMessage(clientType = ClientType.PUBLISHER, clientUid = clientId,msg = UUID.randomUUID().toString(),
+                scope = "Apple.iPad.Display")
         writer.println(msg.encode())
         writer.println(uuid)
         writer.flush()

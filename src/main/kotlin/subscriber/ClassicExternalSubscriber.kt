@@ -1,4 +1,4 @@
-package receiver
+package subscriber
 
 import kotlinx.coroutines.experimental.CommonPool
 import kotlinx.coroutines.experimental.delay
@@ -13,7 +13,7 @@ import java.lang.Math.abs
 import java.net.Socket
 import java.util.*
 
-class ClassicReceiver constructor(private val clientId: String) : Receiver{
+class ClassicExternalSubscriber constructor(private val clientId: String) : ExternalSubscriber {
     private suspend fun processTask() {
         val randomizer = Random()
         while (true) {
@@ -22,7 +22,7 @@ class ClassicReceiver constructor(private val clientId: String) : Receiver{
             val client = Socket("127.0.0.1", 14141)
             val reader = BufferedReader(InputStreamReader(client.inputStream))
             val writer = PrintWriter(client.outputStream)
-            val msg = Message(ClientType.RECEIVER, clientUid = clientUid)
+            val msg = Message(ClientType.SUBSCRIBER, clientUid = clientUid)
             writer.println(msg.encode())
             writer.flush()
             val task = reader.readLine()

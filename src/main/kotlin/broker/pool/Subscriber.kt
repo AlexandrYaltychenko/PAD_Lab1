@@ -2,9 +2,13 @@ package broker.pool
 
 import broker.Scope
 import protocol.RoutedMessage
+import java.io.BufferedReader
+import java.io.PrintWriter
+import java.net.Socket
 
 interface Subscriber {
     val uid : String
     val scopes : List<Scope>
-    fun messagePublished(scope : Scope, message : RoutedMessage)
+    suspend fun messagePublished(scope : Scope, message : RoutedMessage)
+    suspend fun handle(client : Socket, reader : BufferedReader, writer : PrintWriter)
 }
