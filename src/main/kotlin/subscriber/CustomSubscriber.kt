@@ -5,7 +5,9 @@ import kotlinx.coroutines.experimental.delay
 import kotlinx.coroutines.experimental.launch
 import kotlinx.coroutines.experimental.runBlocking
 import protocol.ClientType
+import protocol.MessageType
 import protocol.RoutedMessage
+import util.asRoutedMessage
 import util.encode
 import java.io.BufferedReader
 import java.io.InputStreamReader

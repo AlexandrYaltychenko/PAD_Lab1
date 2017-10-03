@@ -1,7 +1,11 @@
 package broker.pool
 
-import sun.reflect.generics.scope.Scope
+import protocol.RoutedMessage
 
 interface Publisher {
-    val scope : Scope
+    val uid : String
+    val isDead : Boolean
+    val interval : Long
+    var lastWill : RoutedMessage?
+    fun confirm()
 }

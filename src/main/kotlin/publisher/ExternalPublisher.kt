@@ -1,5 +1,5 @@
 package publisher
 
-interface Publisher {
+interface ExternalPublisher {
     suspend fun run()
 }

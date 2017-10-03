@@ -1,13 +1,12 @@
 package broker
 
-import broker.pool.DefaultSubscriber
-import broker.pool.Subscriber
-import broker.pool.SubscriberPool
+import broker.pool.*
 import broker.route.PermanentRoute
 import broker.route.Route
 import kotlinx.coroutines.experimental.CommonPool
 import kotlinx.coroutines.experimental.launch
 import protocol.ClientType
+import protocol.MessageType
 import protocol.RoutedMessage
 import util.asRoutedMessage
 import java.io.BufferedReader
@@ -16,17 +15,42 @@ import java.io.PrintWriter
 import java.net.ServerSocket
 import java.net.Socket
 import java.util.*
+import java.util.concurrent.ConcurrentHashMap
 
 
-class Broker : SubscriberPool {
+class Broker : SubscriberPool, PublisherPool {
     private val timer: Timer = Timer()
     private val root: Route = PermanentRoute(ScopeFactory.fromString("root"), "root")
+    private val publishers = ConcurrentHashMap<String, Publisher>()
+
+    override fun isPresent(uid: String) =
+            publishers.keys.contains(uid)
+
+    override fun addPublisher(publisher: Publisher) {
+        if (!isPresent(publisher.uid))
+            publishers[publisher.uid] = publisher
+    }
+
+    override fun addLastWill(uid: String, lastWill: RoutedMessage) {
+        if (!isPresent(uid))
+            return
+        publishers[uid]?.lastWill = lastWill
+    }
 
     private suspend fun handleClient(client: Socket) {
         val reader = BufferedReader(InputStreamReader(client.inputStream))
         val writer = PrintWriter(client.outputStream)
         val msg = reader.readLine().asRoutedMessage()
         if (msg.clientType == ClientType.PUBLISHER) {
+            when (msg.messageType) {
+                MessageType.CONNECT -> {
+                    addPublisher(DefaultPublisher(msg.clientUid,msg.payload.toLongOrNull() ?: 10000L))
+                }
+                MessageType.LAST_WILL -> {
+                    addLastWill(msg.clientUid,msg)
+                }
+
+            }
             root.putMessage(ScopeFactory.fromString(msg.scope), msg)
             writer.close()
             reader.close()
@@ -37,7 +61,7 @@ class Broker : SubscriberPool {
     }
 
     private suspend fun handleSubscriber(reader: BufferedReader, writer: PrintWriter, client: Socket, scope: Scope) {
-        val subscriber: Subscriber = DefaultSubscriber(this,scope)
+        val subscriber: Subscriber = DefaultSubscriber(this, scope)
         root.subscribe(subscriber)
         subscriber.handle(client, reader, writer)
     }
@@ -50,7 +74,7 @@ class Broker : SubscriberPool {
         root.putMessage(ScopeFactory.fromString(msg.scope), msg)
         msg = RoutedMessage(payload = "Msg2", scope = "apple.com.imac")
         root.putMessage(ScopeFactory.fromString(msg.scope), msg)
-        val subscriber = DefaultSubscriber(this,ScopeFactory.fromString("root.apple.*"))
+        val subscriber = DefaultSubscriber(this, ScopeFactory.fromString("root.apple.*"))
         root.subscribe(subscriber)
         println()
         root.print()
@@ -80,7 +104,6 @@ class Broker : SubscriberPool {
         val server = ServerSocket(14141)
         timer.schedule(object : TimerTask() {
             override fun run() {
-                //router.cron()
                 root.cron()
                 println()
                 root.print()
@@ -95,7 +118,7 @@ class Broker : SubscriberPool {
         }
     }
 
-    private fun preparePermanentRoutes(){
+    private fun preparePermanentRoutes() {
         root.addRoute(PermanentRoute(ScopeFactory.fromString("root.Apple")))
         root.addRoute(PermanentRoute(ScopeFactory.fromString("root.Google")))
     }
