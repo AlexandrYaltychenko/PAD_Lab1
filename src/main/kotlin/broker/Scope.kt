@@ -9,4 +9,5 @@ interface Scope {
     fun relationToSet(scopes: Collection<Scope>) : ScopeRelationship
     fun toList() : List<String>
     val levelsCount : Int
+    val last : String
 }

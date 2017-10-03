@@ -54,7 +54,7 @@ class PermanentExtendedQueue<T>(queue: Queue<T>, name: String, tryToReload: Bool
     }
 
     override fun load(fileName: String, clazz : TypeToken<Queue<T>>) {
-        //println("trying to load $name queue from $name.txt...")
+        println("trying to load $name queue from $name.txt...")
         try {
             decode(File(fileName).bufferedReader().use { it.readText() }, clazz)
         } catch (e : IOException){

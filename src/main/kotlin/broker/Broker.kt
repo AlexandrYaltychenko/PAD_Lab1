@@ -2,6 +2,7 @@ package broker
 
 import broker.pool.DefaultSubscriber
 import broker.pool.Subscriber
+import broker.pool.SubscriberPool
 import broker.route.PermanentRoute
 import broker.route.Route
 import kotlinx.coroutines.experimental.CommonPool
@@ -17,7 +18,7 @@ import java.net.Socket
 import java.util.*
 
 
-class Broker : SubscriberPool{
+class Broker : SubscriberPool {
     private val timer: Timer = Timer()
     private val root: Route = PermanentRoute(ScopeFactory.fromString("root"), "root")
 
@@ -26,14 +27,11 @@ class Broker : SubscriberPool{
         val writer = PrintWriter(client.outputStream)
         val msg = reader.readLine().asRoutedMessage()
         if (msg.clientType == ClientType.PUBLISHER) {
-            //println("\n\nprocessed publisher\n")
             root.putMessage(ScopeFactory.fromString(msg.scope), msg)
-            //root.print()
             writer.close()
             reader.close()
             client.close()
         } else if (msg.clientType == ClientType.SUBSCRIBER) {
-            //println("\n\nprocessed subscriber")
             handleSubscriber(reader, writer, client, ScopeFactory.fromString("root.${msg.scope}"))
         }
     }
@@ -47,10 +45,10 @@ class Broker : SubscriberPool{
     suspend fun testPS() {
         val mainScope = ScopeFactory.fromString("root")
         val root = PermanentRoute(mainScope, "root")
-        var msg = RoutedMessage(msg = "Msg1", scope = "google.jora")
+        var msg = RoutedMessage(payload = "Msg1", scope = "google.jora")
         root.putMessage(ScopeFactory.fromString(msg.scope), msg)
         root.putMessage(ScopeFactory.fromString(msg.scope), msg)
-        msg = RoutedMessage(msg = "Msg2", scope = "apple.com.imac")
+        msg = RoutedMessage(payload = "Msg2", scope = "apple.com.imac")
         root.putMessage(ScopeFactory.fromString(msg.scope), msg)
         val subscriber = DefaultSubscriber(this,ScopeFactory.fromString("root.apple.*"))
         root.subscribe(subscriber)
@@ -58,7 +56,7 @@ class Broker : SubscriberPool{
         root.print()
         println()
         println()
-        msg = RoutedMessage(msg = "Msg3", scope = "apple.com.imac.ssd.512")
+        msg = RoutedMessage(payload = "Msg3", scope = "apple.com.imac.ssd.512")
         root.putMessage(ScopeFactory.fromString(msg.scope), msg)
         println()
         root.print()
@@ -75,23 +73,30 @@ class Broker : SubscriberPool{
 
     suspend fun runServer() {
         println("Starting server...")
-        /*Runtime.getRuntime().addShutdownHook(Thread {
-            router.onStop()
-        })*/
+        preparePermanentRoutes()
+        Runtime.getRuntime().addShutdownHook(Thread {
+            root.onStop()
+        })
         val server = ServerSocket(14141)
         timer.schedule(object : TimerTask() {
             override fun run() {
                 //router.cron()
+                root.cron()
                 println()
                 root.print()
                 println()
             }
-        }, 1000, 1000)
+        }, 5000, 5000)
         while (true) {
             val client = server.accept()
             launch(CommonPool) {
                 handleClient(client)
             }
         }
+    }
+
+    private fun preparePermanentRoutes(){
+        root.addRoute(PermanentRoute(ScopeFactory.fromString("root.Apple")))
+        root.addRoute(PermanentRoute(ScopeFactory.fromString("root.Google")))
     }
 }

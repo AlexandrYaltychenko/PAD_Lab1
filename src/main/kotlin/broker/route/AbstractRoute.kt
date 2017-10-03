@@ -5,6 +5,7 @@ import broker.ScopeFactory
 import broker.ScopeRelationship
 import broker.pool.Subscriber
 import broker.queue.ExtendedQueue
+import broker.queue.QueueType
 import kotlinx.coroutines.experimental.CommonPool
 import kotlinx.coroutines.experimental.launch
 import protocol.RoutedMessage
@@ -15,6 +16,11 @@ abstract class AbstractRoute(override val scope: Scope, override val name: Strin
     protected abstract val messages: ExtendedQueue<RoutedMessage>
     override val subscribers: MutableSet<Subscriber> = mutableSetOf()
     private val transcribers: MutableSet<Subscriber> = mutableSetOf()
+    override val routeCount: Int
+        get() = routes.size
+    override var lastMessage: Long = System.currentTimeMillis()
+    override val messageCount: Int
+        get() = messages.size
 
     override fun getMessages(scope: Scope): List<RoutedMessage> {
         val msgList = mutableListOf<RoutedMessage>()
@@ -59,6 +65,7 @@ abstract class AbstractRoute(override val scope: Scope, override val name: Strin
         } else {
             //println("message put!")
             //println("no next, adding")
+            lastMessage = System.currentTimeMillis()
             messages.add(msg)
             notifySubscribers()
         }
@@ -66,7 +73,6 @@ abstract class AbstractRoute(override val scope: Scope, override val name: Strin
 
     private fun newRoute(scope: Scope, name: String): Route {
         val route = TemporaryRoute(scope, name)
-        // println("created new route $name with scope = $scope")
         routes[name] = route
         for (subscriber in subscribers.union(transcribers))
             route.subscribe(subscriber)
@@ -75,12 +81,12 @@ abstract class AbstractRoute(override val scope: Scope, override val name: Strin
 
     override fun subscribe(subscriber: Subscriber) {
         val relationship = scope.belongsTo(subscriber.scopes)
-        //println("subscribe $name to ${publisher.scopes} relationship = $relationship")
+        //println("subscribe $name to ${subscriber.scopes} relationship = $relationship")
         if (relationship == ScopeRelationship.ABORT)
             return
         if (relationship != ScopeRelationship.NOT_INCLUDED) {
             subscribers.add(subscriber)
-            launch(CommonPool){
+            launch(CommonPool) {
                 notifySubscribers()
             }
         } else
@@ -104,10 +110,11 @@ abstract class AbstractRoute(override val scope: Scope, override val name: Strin
         routes.values.map { it.unsubscribe(publisher) }*/
     }
 
+    @Synchronized
     protected suspend fun notifySubscribers() {
         if (messages.size == 0 || subscribers.size == 0)
             return
-        println("notifying ${subscribers.size} subs with ${messages.size}")
+        //println("notifying ${subscribers.size} subs with ${messages.size}")
         while (messages.isNotEmpty()) {
             val msg = messages.remove()
             for (subscriber in subscribers) {
@@ -117,7 +124,7 @@ abstract class AbstractRoute(override val scope: Scope, override val name: Strin
     }
 
     override fun toString(): String {
-        return "Route $name with scope = $scope with routes = ${routes.keys} and ${messages.size} messages and ${subscribers.size} subscribers"
+        return "Route $name with scope = $scope with routes = ${routes.keys} and ${messages.size} messages and ${subscribers.size} subscribers and ${transcribers.size} transcribers"
     }
 
     override fun print() {
@@ -129,6 +136,30 @@ abstract class AbstractRoute(override val scope: Scope, override val name: Strin
     }
 
     override fun cron() {
-        //here should be placed backup job
+        val iterator = routes.iterator()
+        while (iterator.hasNext()) {
+            val item = iterator.next()
+            item.value.cron()
+            if (item.value.type == QueueType.TEMPORARY && item.value.routeCount == 0 && item.value.messageCount == 0 && item.value.lastMessage < System.currentTimeMillis() - 5000)
+                iterator.remove()
+        }
+        makeBackUp(false)
+
+    }
+
+    override fun addRoute(route: Route) {
+        if (routes[route.name] == null)
+            routes[route.name] = route
+    }
+
+    protected abstract fun makeBackUp(force : Boolean)
+
+    @Synchronized
+    override fun onStop() {
+        routes.values.map {
+            it.onStop()
+        }
+        if (type == QueueType.PERMANENT)
+            makeBackUp(true)
     }
 }

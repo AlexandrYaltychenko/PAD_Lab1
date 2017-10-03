@@ -5,6 +5,8 @@ import java.util.*
 class RouteScope constructor(scope: String) : Scope {
     private val stack: Stack<String> = Stack()
     private val str: String = scope
+    override val last: String
+        get() = if (stack.size > 0) stack[0] else ""
 
     init {
         stack.addAll(scope.split(".").filter { it.isNotEmpty() }.reversed())

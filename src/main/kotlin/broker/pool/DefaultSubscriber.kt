@@ -1,7 +1,6 @@
 package broker.pool
 
 import broker.Scope
-import broker.SubscriberPool
 import kotlinx.coroutines.experimental.channels.Channel
 import kotlinx.coroutines.experimental.delay
 import protocol.RoutedMessage

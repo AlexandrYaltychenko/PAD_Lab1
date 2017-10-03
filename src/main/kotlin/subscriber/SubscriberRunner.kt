@@ -1,6 +1,5 @@
 package subscriber
 
-import broker.ScopeFactory
 import kotlinx.coroutines.experimental.runBlocking
 import java.util.*
 

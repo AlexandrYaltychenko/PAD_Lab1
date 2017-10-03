@@ -12,12 +12,12 @@ import java.util.*
 
 class CustomPublisher(private val clientId : String, private val scope : String): Publisher {
     private suspend fun makeTask() {
-        println("making task...")
         val uuid = UUID.randomUUID()
         val client = Socket("127.0.0.1", 14141)
         val writer = PrintWriter(client.outputStream)
-        val msg = RoutedMessage(clientType = ClientType.PUBLISHER, clientUid = clientId,msg = UUID.randomUUID().toString(),
+        val msg = RoutedMessage(clientType = ClientType.PUBLISHER, clientUid = clientId, payload = UUID.randomUUID().toString(),
                 scope = scope)
+        println("SENDIND $msg")
         writer.println(msg.encode())
         writer.println(uuid)
         writer.flush()
@@ -27,7 +27,6 @@ class CustomPublisher(private val clientId : String, private val scope : String)
     }
 
     override suspend fun run() {
-        val clientId = UUID.randomUUID()
         println("SENDER $clientId STARTED WORKING...")
         Runtime.getRuntime().addShutdownHook(Thread {
             println("SENDER $clientId STOPPED WORKING")

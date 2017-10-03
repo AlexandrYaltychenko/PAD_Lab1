@@ -1,6 +1,4 @@
-package broker
-
-import broker.pool.Subscriber
+package broker.pool
 
 interface SubscriberPool {
     fun subscribe(subscriber: Subscriber)

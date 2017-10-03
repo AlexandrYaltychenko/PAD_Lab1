@@ -13,4 +13,7 @@ class TemporaryRoute(override val scope: Scope, override val name: String) : Abs
         get() = QueueType.TEMPORARY
     override val messages: ExtendedQueue<RoutedMessage> = PermanentExtendedQueue(name, true, object : TypeToken<Queue<RoutedMessage>>() {})
 
+    override fun makeBackUp(force : Boolean) {
+        //doing nothing, because the route is temporary
+    }
 }
