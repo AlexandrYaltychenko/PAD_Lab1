@@ -61,6 +61,7 @@ The improved implementation of the protocol (which supports routing) is based on
 + topic (topic of message, used by broker for routing)
 
 **Constants**
+
 These constants are used in project:
 - PORT_NUMBER = 14141 *(Number of tcp port)*
 - HOST = "127.0.0.1" *(host ip for clients)*
@@ -71,24 +72,29 @@ These constants are used in project:
 - CLIENT_INTERVAL = 1000 *(interval between client reconnections)*
 
 **Sender details**
+
 NewSender sends routed messages with clientType = SENDER and the selected TOPIC
 ClassicSender sends messages without clientType.
 *In such case broker transforms message to routed message and sends it to the default queue*
 
 **Receiver details**
+
 NewReceiver receives the messages with selected topic
 ClassicReceiver receives the messages from default queue
 
 **Broker details**
+
 Processing senders:
 + If no topic defined the message is sent to default queue
 + If there is no queue corresponding to the sender's message topic, new temporary queue is created
 
 Processing receivers:
+
 + If no topic defined receiver gets messages from default queue
-+ If defined topic does not exist the explicit error from the server is received
++ If defined topic does not exist, the explicit error from the server is received
 
 **Queue and Cron details**
+
 + All dynamically created queues are temporary. Permanent queues are created on initialization
 + Every CRON_INTERVAL queues get signal to make its cron job, in our case this job is backup. Every queue decides itself if backup is needed (special params are used: backUpItemsLimit, backUpInterval).
 
