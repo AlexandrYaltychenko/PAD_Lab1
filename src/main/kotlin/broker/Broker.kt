@@ -2,9 +2,11 @@ package broker
 
 import broker.router.DefaultRouter
 import broker.router.Router
+import com.google.gson.JsonSyntaxException
 import kotlinx.coroutines.experimental.CommonPool
 import kotlinx.coroutines.experimental.launch
 import protocol.ClientType
+import protocol.Protocol
 import util.asRoutedMessage
 import java.io.BufferedReader
 import java.io.InputStreamReader
@@ -21,22 +23,21 @@ class Broker {
     private fun handleClient(client: Socket) {
         val reader = BufferedReader(InputStreamReader(client.inputStream))
         val writer = PrintWriter(client.outputStream)
-        val msg = reader.readLine().asRoutedMessage()
+        try {
+            val msg = reader.readLine().asRoutedMessage()
         if (msg.clientType == ClientType.RECEIVER) {
-            //println("GOT MSG " + payload)
-            //println("CONNECTED RECEIVER " + payload.clientUid)
             writer.println(router.get(msg.topic))
             writer.flush()
         } else if (msg.clientType == ClientType.SENDER) {
-            //println("CONNECTED SENDER " + payload.clientUid)
-            //println("GOT MSG " + payload)
-            //println("SCOPE = ${payload.topic}")
             router.put(msg)
         }
-        //println("THREAD = " + Thread.currentThread().name)
-        writer.close()
-        reader.close()
-        client.close()
+        } catch (e: JsonSyntaxException) {
+            println("invalid message got... ignoring...")
+        } finally {
+            writer.close()
+            reader.close()
+            client.close()
+        }
     }
 
     fun runServer() {
@@ -44,12 +45,12 @@ class Broker {
         Runtime.getRuntime().addShutdownHook(Thread {
             router.onStop()
         })
-        val server = ServerSocket(14141)
+        val server = ServerSocket(Protocol.PORT_NUMBER)
         timer.schedule(object : TimerTask() {
             override fun run() {
                 router.cron()
             }
-        }, 5000, 5000)
+        }, Protocol.CRON_DELAY, Protocol.CRON_INTERVAL)
         while (true) {
             val client = server.accept()
             launch(CommonPool) {

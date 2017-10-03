@@ -5,6 +5,7 @@ import kotlinx.coroutines.experimental.delay
 import kotlinx.coroutines.experimental.launch
 import protocol.ClientType
 import protocol.Message
+import protocol.Protocol
 import util.encode
 import java.io.BufferedReader
 import java.io.InputStreamReader
@@ -19,7 +20,7 @@ class ClassicReceiver constructor(private val clientId: String) : Receiver{
         while (true) {
             val clientUid = UUID.randomUUID().toString()
             println("asking for a message...")
-            val client = Socket("127.0.0.1", 14141)
+            val client = Socket(Protocol.HOST, Protocol.PORT_NUMBER)
             val reader = BufferedReader(InputStreamReader(client.inputStream))
             val writer = PrintWriter(client.outputStream)
             val msg = Message(ClientType.RECEIVER, clientUid = clientUid)
@@ -28,7 +29,7 @@ class ClassicReceiver constructor(private val clientId: String) : Receiver{
             val task = reader.readLine()
             println("PROCESSED " + task)
             client.close()
-            delay(1000 + (abs(randomizer.nextInt()) % 500).toLong())
+            delay(Protocol.CLIENT_INTERVAL + (abs(randomizer.nextInt()) % 500).toLong())
 
         }
     }

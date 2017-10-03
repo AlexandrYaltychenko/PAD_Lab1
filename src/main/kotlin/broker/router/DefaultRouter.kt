@@ -3,6 +3,8 @@ package broker.router
 import broker.queue.*
 import com.google.gson.reflect.TypeToken
 import protocol.ClientType
+import protocol.Protocol
+import protocol.Protocol.DEFAULT_QUEUE
 import protocol.RoutedMessage
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
@@ -11,8 +13,9 @@ class DefaultRouter : Router {
     private val map: MutableMap<String, ExtendedQueue<RoutedMessage>> = ConcurrentHashMap()
 
     init {
-        map.put("main", QueueFactory.createQueue(QueueType.PERMANENT,
-                "main",
+        //initing with permanent queues
+        map.put(DEFAULT_QUEUE, QueueFactory.createQueue(QueueType.PERMANENT,
+                DEFAULT_QUEUE,
                 object : TypeToken<Queue<RoutedMessage>>() {}))
     }
 
@@ -32,7 +35,7 @@ class DefaultRouter : Router {
             if (queue.size > 0)
                 queue.poll()
             else
-                RoutedMessage(ClientType.SERVER, topic = scope, payload = "IDLE")
+                RoutedMessage(ClientType.SERVER, topic = scope, payload = Protocol.IDLE_MESSAGE)
         else
             RoutedMessage(ClientType.SERVER, topic = scope, payload = "error! no such queue: $scope")
     }

@@ -1,17 +1,19 @@
 package receiver
 
 import kotlinx.coroutines.experimental.runBlocking
-import sender.AlarmSender
-import sender.ClassicSender
-import sender.Sender
+import protocol.Protocol.DEFAULT_QUEUE
 import java.util.*
 
 fun main(args: Array<String>) = runBlocking {
-    println("select sender type : 1 - classic 2 - alarm")
+    println("Select sender type : 1 - Classic 2 - New")
     val type : Int = readLine()?.toInt() ?: 1
     val receiver : Receiver = when (type) {
         1 -> ClassicReceiver(UUID.randomUUID().toString())
-        else -> AlarmReceiver(UUID.randomUUID().toString())
+        else -> {
+            println("Enter the topic")
+            val topic = readLine()
+            NewReceiver(UUID.randomUUID().toString(),topic ?: DEFAULT_QUEUE)
+        }
     }
     receiver.run()
 }
