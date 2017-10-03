@@ -23,6 +23,7 @@ compile group: 'com.google.code.gson', name: 'gson', version: '2.7'
 ~~~
 
 **Kotlin experimental**
+
 This project uses experimental kotlin coroutines, which are in development.
 Add these lines to build.gradle to hide compilation warning:
 ~~~
@@ -32,6 +33,8 @@ kotlin {
     }
 }
 ~~~
+
+*Local copy of the gradle wrapper is not provided, please use the default one*
 
 ### Run
 
