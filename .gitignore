@@ -20,6 +20,8 @@ workspace.xml
 /ultimate/tmp
 /js/js.translator/testData/**/out/
 .gradle/
+gradle/
+gradlew*
 build/
 !**/src/**/build
 *.iml
