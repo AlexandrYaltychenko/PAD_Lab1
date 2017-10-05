@@ -1,6 +1,7 @@
 package broker.pool
 
 import broker.Scope
+import protocol.Connection
 import protocol.RoutedMessage
 import java.io.BufferedReader
 import java.io.PrintWriter
@@ -10,5 +11,6 @@ interface Subscriber {
     val uid : String
     val scopes : List<Scope>
     suspend fun messagePublished(scope : Scope, message : RoutedMessage)
-    suspend fun handle(client : Socket, reader : BufferedReader, writer : PrintWriter)
+    suspend fun handle(connection : Connection)
+    suspend fun stop()
 }

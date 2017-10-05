@@ -1,6 +1,7 @@
 package broker.queue
 
 import com.google.gson.reflect.TypeToken
+import protocol.Protocol
 import java.util.*
 
 interface ExtendedBackupedQueue<T> : ExtendedQueue<T> {
@@ -13,7 +14,7 @@ interface ExtendedBackupedQueue<T> : ExtendedQueue<T> {
     val lastBackUp: Long
     val afterBackupItemsCount: Int
     val DEFAULT_BACKUP_LIMIT
-        get() = 100
+        get() = Protocol.DEFAULT_BACKUP_LIMIT
     val DEFAULT_BACKUP_INTERVAL : Long
-        get() = 60000
+        get() = Protocol.DEFAULT_BACKUP_INTERVAL
 }

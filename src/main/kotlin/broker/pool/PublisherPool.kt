@@ -7,5 +7,6 @@ interface PublisherPool {
     fun addPublisher(publisher : Publisher)
     fun addLastWill(uid : String, lastWill : RoutedMessage)
     fun confirmPublisher(uid : String)
-    fun cron()
+    fun disconnectPublisher(uid : String)
+    suspend fun cron()
 }

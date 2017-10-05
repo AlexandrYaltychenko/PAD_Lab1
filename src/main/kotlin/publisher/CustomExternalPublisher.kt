@@ -1,61 +1,51 @@
 package publisher
 
 import kotlinx.coroutines.experimental.CommonPool
+import kotlinx.coroutines.experimental.Job
 import kotlinx.coroutines.experimental.delay
 import kotlinx.coroutines.experimental.launch
-import protocol.ClientType
-import protocol.MessageType
-import protocol.RoutedMessage
-import util.asRoutedMessage
-import util.encode
-import java.io.BufferedReader
-import java.io.InputStreamReader
-import java.io.PrintWriter
-import java.net.Socket
+import protocol.*
 import java.util.*
 
-class CustomExternalPublisher(private val clientId : String, private val scope : String): ExternalPublisher {
+class CustomExternalPublisher(private val clientId: String, private val scope: String) : BaseClient(clientId,
+        Protocol.PORT_NUMBER,
+        Protocol.HOST, ClientType.PUBLISHER), ExternalPublisher {
+    private var job : Job? = null
     private suspend fun makeTask() {
-        val uuid = UUID.randomUUID().toString()
-        val client = Socket("127.0.0.1", 14141)
-        val writer = PrintWriter(client.outputStream)
-        val reader = BufferedReader(InputStreamReader(client.inputStream))
-        var msg = RoutedMessage(ClientType.PUBLISHER, clientUid = uuid, scope = scope, messageType = MessageType.CONNECT)
-        writer.println(msg)
-        writer.flush()
-        var response = reader.readLine().asRoutedMessage()
-        if (response.messageType == MessageType.ERROR){
-            println("Broker rejected the connection: ${response.payload}")
-            return
+        while (true) {
+            println("publishing message... to $scope")
+            sendNoResponseMessage(createMessage(UUID.randomUUID().toString(), MessageType.NORMAL, scope))
+            delay(Protocol.CLIENT_INTERVAL)
         }
-        msg = RoutedMessage(ClientType.PUBLISHER, clientUid = uuid, scope = scope, messageType = MessageType.LAST_WILL)
-        writer.println(msg)
-        writer.flush()
-        response = reader.readLine().asRoutedMessage()
-        if (response.messageType == MessageType.ERROR){
-            println("Broker rejected to accept the last will: ${response.payload}")
-        }
-        msg = RoutedMessage(clientType = ClientType.PUBLISHER, clientUid = clientId, payload = UUID.randomUUID().toString(),
-                scope = scope)
-        println("SENDIND $msg")
-        writer.println(msg.encode())
-        writer.println(uuid)
-        writer.flush()
-        writer.close()
-        client.close()
-        delay(1000)
     }
 
     override suspend fun run() {
         println("SENDER $clientId STARTED WORKING...")
         Runtime.getRuntime().addShutdownHook(Thread {
+            job?.cancel()
+            println("send disconnect signal? (y/n)")
+            if (readLine()?.contains("y") == true)  {
+                println("sending disconnect message")
+                sendNoResponseMessage(createMessage("I decided to disconnect...", MessageType.DISCONNECT, scope))
+            }
             println("SENDER $clientId STOPPED WORKING")
         })
-        while (true) {
-            launch(CommonPool) {
+        if (initConnection()) {
+            job = launch(CommonPool) {
                 makeTask()
             }
-            delay(1000)
-        }
+            job?.join()
+        } else
+            println("failed to establish connection with the server...")
+    }
+
+    private fun initConnection(): Boolean {
+        var response: RoutedMessage? = sendResponsedMessage(createMessage("15000", MessageType.CONNECT, scope)) ?: return false
+        println(response)
+        response = sendResponsedMessage(createMessage("Something made me not responding... Alarm!", MessageType.LAST_WILL, scope))
+        println(response)
+        if (response == null)
+            return false
+        return true
     }
 }

@@ -1,5 +1,5 @@
 .DS_Store
-.idea/shelf
+.idea/
 /android.tests.dependencies
 /confluence/target
 /dependencies
@@ -32,3 +32,4 @@ build/
 .idea/compiler.xml
 .idea/inspectionProfiles/profiles_settings.xml
 .idea/.name
+gradlew*

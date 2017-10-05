@@ -1,0 +1,34 @@
+[
+  {
+    "name": "Apple",
+    "routes": [
+      {
+        "name": "Products",
+        "routes": [
+          {
+            "name": "iPhone"
+          },
+          {
+            "name": "iPad"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Google",
+    "routes": [
+      {
+        "name": "Products",
+        "routes": [
+          {
+            "name": "Nexus"
+          },
+          {
+            "name": "Pixel"
+          }
+        ]
+      }
+    ]
+  }
+]

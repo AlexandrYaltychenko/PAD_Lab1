@@ -46,11 +46,7 @@ abstract class AbstractRoute(override val scope: Scope, override val name: Strin
     }
 
     override suspend fun putMessage(scope: Scope, msg: RoutedMessage) {
-        //println("put message")
-        /*println()
-        println("route : $name (${this.scope})\nputting to $scope")*/
         if (scope.hasNext()) {
-            //println("has next")
             val target = scope.peek()
             target?.apply {
                 scope.next()
@@ -58,13 +54,10 @@ abstract class AbstractRoute(override val scope: Scope, override val name: Strin
                 if (route != null) {
                     route.putMessage(scope, msg)
                 } else {
-                    //println("should create new route")
                     newRoute(ScopeFactory.appendToEnd(this@AbstractRoute.scope, target), target).putMessage(scope, msg)
                 }
             }
         } else {
-            //println("message put!")
-            //println("no next, adding")
             lastMessage = System.currentTimeMillis()
             messages.add(msg)
             notifySubscribers()
@@ -81,7 +74,6 @@ abstract class AbstractRoute(override val scope: Scope, override val name: Strin
 
     override fun subscribe(subscriber: Subscriber) {
         val relationship = scope.belongsTo(subscriber.scopes)
-        //println("subscribe $name to ${subscriber.scopes} relationship = $relationship")
         if (relationship == ScopeRelationship.ABORT)
             return
         if (relationship != ScopeRelationship.NOT_INCLUDED) {
@@ -98,23 +90,19 @@ abstract class AbstractRoute(override val scope: Scope, override val name: Strin
     }
 
     override fun unsubscribe(subscriber: Subscriber) {
-        if (scope.belongsTo(subscriber.scopes) == ScopeRelationship.ABORT)
+        if (scope.belongsTo(subscriber.scopes) == ScopeRelationship.ABORT) {
             return
+        }
         for (route in routes.values)
             route.unsubscribe(subscriber)
         subscribers.remove(subscriber)
         transcribers.remove(subscriber)
-        /*if (!scope.belongsTo(publisher.scopes))
-            return
-        subscribers.remove(publisher)
-        routes.values.map { it.unsubscribe(publisher) }*/
     }
 
     @Synchronized
     protected suspend fun notifySubscribers() {
         if (messages.size == 0 || subscribers.size == 0)
             return
-        //println("notifying ${subscribers.size} subs with ${messages.size}")
         while (messages.isNotEmpty()) {
             val msg = messages.remove()
             for (subscriber in subscribers) {

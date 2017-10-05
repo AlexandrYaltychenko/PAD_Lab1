@@ -3,87 +3,84 @@ package broker
 import broker.pool.*
 import broker.route.PermanentRoute
 import broker.route.Route
+import com.google.gson.JsonArray
+import com.google.gson.JsonParser
 import kotlinx.coroutines.experimental.CommonPool
 import kotlinx.coroutines.experimental.launch
-import protocol.ClientType
-import protocol.MessageType
-import protocol.RoutedMessage
-import util.asRoutedMessage
-import java.io.BufferedReader
-import java.io.InputStreamReader
-import java.io.PrintWriter
+import protocol.*
+import java.io.File
 import java.net.ServerSocket
 import java.net.Socket
 import java.util.*
-import java.util.concurrent.ConcurrentHashMap
 
 
-class Broker : SubscriberPool, PublisherPool {
+class Broker : SubscriberPool {
     private val timer: Timer = Timer()
+    private val pingTimer = Timer()
     private val root: Route = PermanentRoute(ScopeFactory.fromString("root"), "root")
-    private val publishers = ConcurrentHashMap<String, Publisher>()
+    private val publisherPool = DefaultPublisherPool(this)
+    private val subscribers = mutableMapOf<String, Subscriber>()
 
-    override fun isPresent(uid: String) =
-            publishers.keys.contains(uid)
-
-    override fun addPublisher(publisher: Publisher) {
-        if (!isPresent(publisher.uid))
-            publishers[publisher.uid] = publisher
-    }
-
-    override fun addLastWill(uid: String, lastWill: RoutedMessage) {
-        if (!isPresent(uid))
-            return
-        publishers[uid]?.lastWill = lastWill
-    }
 
     private suspend fun handleClient(client: Socket) {
-        val reader = BufferedReader(InputStreamReader(client.inputStream))
-        val writer = PrintWriter(client.outputStream)
-        val msg = reader.readLine().asRoutedMessage()
+        val connection = Connection(client)
+        val msg = connection.readMsg()
+        if (msg == null) {
+            println("got invalid message... rejecting...")
+            connection.close()
+            return
+        }
         if (msg.clientType == ClientType.PUBLISHER) {
             when (msg.messageType) {
                 MessageType.CONNECT -> {
-                    addPublisher(DefaultPublisher(msg.clientUid,msg.payload.toLongOrNull() ?: 10000L))
+                    println("New publisher connected")
+                    publisherPool.addPublisher(DefaultPublisher(msg.clientUid, msg.payload.toLongOrNull() ?: 10000L, scope = msg.scope))
+                    connection.writeMsg(RoutedMessage(ClientType.SERVER, payload = "client connected", messageType = MessageType.NORMAL))
                 }
                 MessageType.LAST_WILL -> {
-                    addLastWill(msg.clientUid,msg)
+                    println("publisher ${msg.clientUid} sent its last will")
+                    publisherPool.addLastWill(msg.clientUid, msg)
+                    connection.writeMsg(RoutedMessage(ClientType.SERVER, payload = "last will saved", messageType = MessageType.NORMAL))
+                }
+                MessageType.DISCONNECT -> {
+                    println("publisher ${msg.clientUid} performed a planned disconnection")
+                    publisherPool.disconnectPublisher(msg.clientUid)
+                }
+                else -> {
+                    publisherPool.confirmPublisher(msg.clientUid)
+                    root.putMessage(ScopeFactory.fromString(msg.scope), msg)
                 }
 
             }
-            root.putMessage(ScopeFactory.fromString(msg.scope), msg)
-            writer.close()
-            reader.close()
-            client.close()
         } else if (msg.clientType == ClientType.SUBSCRIBER) {
-            handleSubscriber(reader, writer, client, ScopeFactory.fromString("root.${msg.scope}"))
+            when (msg.messageType){
+                MessageType.DISCONNECT -> {
+                    println("disconnecting subscriber")
+                    val subscriber = subscribers[msg.clientUid]
+                    if (subscriber == null)
+                        println("not found! ${msg.clientUid}")
+                    subscriber?.let {
+                        println("unsubscribing ${msg.clientUid}")
+                        subscriber.stop()
+                        unsubscribe(subscriber)
+                    }
+                }
+                else -> handleSubscriber(connection, msg)
+            }
         }
+        connection.close()
     }
 
-    private suspend fun handleSubscriber(reader: BufferedReader, writer: PrintWriter, client: Socket, scope: Scope) {
-        val subscriber: Subscriber = DefaultSubscriber(this, scope)
-        root.subscribe(subscriber)
-        subscriber.handle(client, reader, writer)
+    override suspend fun notify(msg: RoutedMessage) {
+        root.putMessage(ScopeFactory.fromString(msg.scope), msg)
     }
 
-    suspend fun testPS() {
-        val mainScope = ScopeFactory.fromString("root")
-        val root = PermanentRoute(mainScope, "root")
-        var msg = RoutedMessage(payload = "Msg1", scope = "google.jora")
-        root.putMessage(ScopeFactory.fromString(msg.scope), msg)
-        root.putMessage(ScopeFactory.fromString(msg.scope), msg)
-        msg = RoutedMessage(payload = "Msg2", scope = "apple.com.imac")
-        root.putMessage(ScopeFactory.fromString(msg.scope), msg)
-        val subscriber = DefaultSubscriber(this, ScopeFactory.fromString("root.apple.*"))
+    private suspend fun handleSubscriber(connection: Connection, msg : RoutedMessage) {
+        println("handling new subscriber ${msg.clientUid}")
+        val subscriber: Subscriber = DefaultSubscriber(this, ScopeFactory.fromString("root.${msg.scope}"), uid = msg.clientUid)
+        subscribers[msg.clientUid] = subscriber
         root.subscribe(subscriber)
-        println()
-        root.print()
-        println()
-        println()
-        msg = RoutedMessage(payload = "Msg3", scope = "apple.com.imac.ssd.512")
-        root.putMessage(ScopeFactory.fromString(msg.scope), msg)
-        println()
-        root.print()
+        subscriber.handle(connection)
     }
 
     override fun subscribe(subscriber: Subscriber) {
@@ -101,15 +98,23 @@ class Broker : SubscriberPool, PublisherPool {
         Runtime.getRuntime().addShutdownHook(Thread {
             root.onStop()
         })
-        val server = ServerSocket(14141)
+        val server = ServerSocket(Protocol.PORT_NUMBER)
         timer.schedule(object : TimerTask() {
             override fun run() {
                 root.cron()
                 println()
                 root.print()
                 println()
+                println()
             }
-        }, 5000, 5000)
+        }, Protocol.CRON_DELAY, Protocol.CRON_INTERVAL)
+        pingTimer.schedule(object : TimerTask() {
+            override fun run() {
+                launch(CommonPool) {
+                    publisherPool.cron()
+                }
+            }
+        }, Protocol.CRON_DELAY, Protocol.CRON_INTERVAL)
         while (true) {
             val client = server.accept()
             launch(CommonPool) {
@@ -119,7 +124,26 @@ class Broker : SubscriberPool, PublisherPool {
     }
 
     private fun preparePermanentRoutes() {
-        root.addRoute(PermanentRoute(ScopeFactory.fromString("root.Apple")))
-        root.addRoute(PermanentRoute(ScopeFactory.fromString("root.Google")))
+        try {
+            val json = JsonParser().parse(File("permanent.json").bufferedReader().use { it.readText() }).asJsonArray
+            loadScopes(root, json)
+        } catch (e: Exception) {
+            root.addRoute(PermanentRoute(ScopeFactory.fromString("root.Apple")))
+            root.addRoute(PermanentRoute(ScopeFactory.fromString("root.Google")))
+        }
     }
+
+    private fun loadScopes(root: Route, array: JsonArray) {
+        if (array.size() == 0)
+            return
+        for (obj in array) {
+            val routeObj = obj.asJsonObject
+            val scope = ScopeFactory.fromString("${root.scope}.${routeObj.get("name").asString}")
+            val newRoute = PermanentRoute(scope)
+            root.addRoute(newRoute)
+            if (routeObj.has("routes"))
+                loadScopes(newRoute, routeObj.getAsJsonArray("routes"))
+        }
+    }
+
 }
