@@ -1,6 +1,6 @@
 package broker.pool
 
-import broker.Scope
+import broker.Topic
 import protocol.RoutedMessage
 
 interface Publisher {
@@ -8,6 +8,6 @@ interface Publisher {
     val isDead : Boolean
     val interval : Long
     var lastWill : RoutedMessage?
-    val scope : Scope
+    val topic: Topic
     fun confirm()
 }

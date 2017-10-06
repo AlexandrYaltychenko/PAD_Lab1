@@ -38,7 +38,7 @@ class DefaultPublisherPool(private val subscriberPool: SubscriberPool) : Publish
             if (publisher.isDead) {
                 val notification = "Warning! Publisher ${publisher.uid} is Dead!!! Sending notification..."
                 println("\n$notification")
-                val lastWill = publisher.lastWill ?: RoutedMessage(ClientType.SERVER, payload = notification, scope = publisher.scope.toString(), messageType = MessageType.ERROR)
+                val lastWill = publisher.lastWill ?: RoutedMessage(ClientType.SERVER, payload = notification, topic = publisher.topic.toString(), messageType = MessageType.ERROR)
                 subscriberPool.notify(lastWill)
                 iterator.remove()
             }

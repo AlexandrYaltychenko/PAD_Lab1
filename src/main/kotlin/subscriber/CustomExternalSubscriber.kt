@@ -10,7 +10,6 @@ import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.io.PrintWriter
 import java.net.Socket
-import java.util.*
 
 class CustomExternalSubscriber(private val clientId: String, private val scope: String) : ExternalSubscriber {
     private var isConnected: Boolean = true
@@ -19,13 +18,18 @@ class CustomExternalSubscriber(private val clientId: String, private val scope: 
         val reader = BufferedReader(InputStreamReader(client.inputStream))
         val writer = PrintWriter(client.outputStream)
         while (true) {
-            val msg = RoutedMessage(ClientType.SUBSCRIBER, clientUid = clientId, scope = scope, messageType = MessageType.CONNECT)
+            val msg = RoutedMessage(ClientType.SUBSCRIBER, clientUid = clientId, topic = scope, messageType = MessageType.CONNECT)
             writer.println(msg.encode())
             writer.flush()
             isConnected = true
-            val response = reader.readLine().asRoutedMessage()
+            val response =
+            try {
+                reader.readLine().asRoutedMessage()
+            } catch (e : Exception){
+                null
+            }
             println("PROCESSED " + response)
-            if (response.messageType == MessageType.ERROR) {
+            if (response?.messageType == MessageType.ERROR) {
                 isConnected = false
                 println("stopping...")
                 break
@@ -38,7 +42,7 @@ class CustomExternalSubscriber(private val clientId: String, private val scope: 
         Runtime.getRuntime().addShutdownHook(Thread {
             if (isConnected) {
                 val connection = Connection(Socket(Protocol.HOST, Protocol.PORT_NUMBER))
-                connection.writeMsg(RoutedMessage(clientType = ClientType.SUBSCRIBER, clientUid = clientId, scope = scope, payload = "I decided to disconnect...", messageType = MessageType.DISCONNECT))
+                connection.writeMsg(RoutedMessage(clientType = ClientType.SUBSCRIBER, clientUid = clientId, topic = scope, payload = "I decided to disconnect...", messageType = MessageType.DISCONNECT))
                 connection.close()
             }
             println("CLIENT $clientId STOPPED WORKING")

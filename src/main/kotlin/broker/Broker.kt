@@ -5,12 +5,10 @@ import broker.route.PermanentRoute
 import broker.route.Route
 import com.google.gson.JsonArray
 import com.google.gson.JsonParser
-import com.google.gson.JsonSyntaxException
 import kotlinx.coroutines.experimental.CommonPool
 import kotlinx.coroutines.experimental.launch
 import protocol.*
 import java.io.File
-import java.io.IOException
 import java.net.ServerSocket
 import java.net.Socket
 import java.util.*
@@ -19,7 +17,7 @@ import java.util.*
 class Broker : SubscriberPool {
     private val timer: Timer = Timer()
     private val pingTimer = Timer()
-    private val root: Route = PermanentRoute(ScopeFactory.fromString("root"), "root")
+    private val root: Route = PermanentRoute(TopicFactory.fromString("root"), "root")
     private val publisherPool = DefaultPublisherPool(this)
     private val subscribers = mutableMapOf<String, Subscriber>()
 
@@ -36,7 +34,7 @@ class Broker : SubscriberPool {
             when (msg.messageType) {
                 MessageType.CONNECT -> {
                     println("New publisher connected")
-                    publisherPool.addPublisher(DefaultPublisher(msg.clientUid, msg.payload.toLongOrNull() ?: 10000L, scope = msg.scope))
+                    publisherPool.addPublisher(DefaultPublisher(msg.clientUid, msg.payload.toLongOrNull() ?: 10000L, scope = msg.topic))
                     connection.writeMsg(RoutedMessage(ClientType.SERVER, payload = "client connected", messageType = MessageType.NORMAL))
                 }
                 MessageType.LAST_WILL -> {
@@ -50,7 +48,7 @@ class Broker : SubscriberPool {
                 }
                 else -> {
                     publisherPool.confirmPublisher(msg.clientUid)
-                    root.putMessage(ScopeFactory.fromString(msg.scope), msg)
+                    root.putMessage(TopicFactory.fromString(msg.topic), msg)
                 }
 
             }
@@ -74,12 +72,12 @@ class Broker : SubscriberPool {
     }
 
     override suspend fun notify(msg: RoutedMessage) {
-        root.putMessage(ScopeFactory.fromString(msg.scope), msg)
+        root.putMessage(TopicFactory.fromString(msg.topic), msg)
     }
 
     private suspend fun handleSubscriber(connection: Connection, msg: RoutedMessage) {
         println("handling new subscriber ${msg.clientUid}")
-        val subscriber: Subscriber = DefaultSubscriber(this, ScopeFactory.fromString("root.${msg.scope}"), uid = msg.clientUid)
+        val subscriber: Subscriber = DefaultSubscriber(this, TopicFactory.fromString("root.${msg.topic}"), uid = msg.clientUid)
         root.subscribe(subscriber)
         if (subscriber.isAttached){
             println("Subscription accepted!")
@@ -89,7 +87,7 @@ class Broker : SubscriberPool {
         else {
             println("Error! No routes found...")
             unsubscribe(subscriber)
-            connection.writeMsg(RoutedMessage(clientType = ClientType.SERVER,payload = "No such route",scope = msg.scope, messageType = MessageType.ERROR))
+            connection.writeMsg(RoutedMessage(clientType = ClientType.SERVER,payload = "No such route", topic = msg.topic, messageType = MessageType.ERROR))
             connection.close()
             println("error sent!")
         }
@@ -139,8 +137,8 @@ class Broker : SubscriberPool {
             val json = JsonParser().parse(File("permanent.json").bufferedReader().use { it.readText() }).asJsonArray
             loadScopes(root, json)
         } catch (e: Exception) {
-            root.addRoute(PermanentRoute(ScopeFactory.fromString("root.Apple")))
-            root.addRoute(PermanentRoute(ScopeFactory.fromString("root.Google")))
+            root.addRoute(PermanentRoute(TopicFactory.fromString("root.Apple")))
+            root.addRoute(PermanentRoute(TopicFactory.fromString("root.Google")))
         }
     }
 
@@ -149,7 +147,7 @@ class Broker : SubscriberPool {
             return
         for (obj in array) {
             val routeObj = obj.asJsonObject
-            val scope = ScopeFactory.fromString("${root.scope}.${routeObj.get("name").asString}")
+            val scope = TopicFactory.fromString("${root.topic}.${routeObj.get("name").asString}")
             val newRoute = PermanentRoute(scope)
             root.addRoute(newRoute)
             if (routeObj.has("routes"))

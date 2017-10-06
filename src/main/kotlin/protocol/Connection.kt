@@ -10,7 +10,7 @@ import java.net.Socket
 
 class Connection(val socket: Socket, val reader: BufferedReader, val writer: PrintWriter) {
 
-    constructor(client : Socket) : this (client, BufferedReader(InputStreamReader(client.inputStream)),
+    constructor(client: Socket) : this(client, BufferedReader(InputStreamReader(client.inputStream)),
             PrintWriter(client.outputStream))
 
     fun writeMsg(msg: RoutedMessage) {
@@ -18,18 +18,23 @@ class Connection(val socket: Socket, val reader: BufferedReader, val writer: Pri
         writer.flush()
     }
 
-    fun readMsg() : RoutedMessage? {
+    fun readMsg(): RoutedMessage? {
         try {
             return reader.readLine().asRoutedMessage()
-        } catch (e : Exception){
+        } catch (e: Exception) {
             return null
         }
     }
 
     fun close() {
+        if (isClosed)
+            return
         writer.close()
         reader.close()
         socket.close()
     }
+
+    val isClosed: Boolean
+        get() = socket.isClosed
 
 }

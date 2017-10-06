@@ -2,7 +2,7 @@ package broker
 
 import java.util.*
 
-class RouteScope constructor(scope: String) : Scope {
+class RouteTopic constructor(scope: String) : Topic {
     private val stack: Stack<String> = Stack()
     private val str: String = scope
     override val last: String
@@ -38,76 +38,76 @@ class RouteScope constructor(scope: String) : Scope {
         return stack.toList().reversed()
     }
 
-    override fun belongsTo(scopes: Collection<Scope>): ScopeRelationship {
+    override fun belongsTo(topics: Collection<Topic>): TopicRelationship {
         //println("CALLED BELONGS")
-        var current = ScopeRelationship.ABORT
-        for (scope in scopes) {
+        var current = TopicRelationship.ABORT
+        for (scope in topics) {
             val relationship = compatible(scope)
             //println("GOT = " + relationship)
             when (relationship) {
-                ScopeRelationship.NOT_INCLUDED ->
-                    if (current == ScopeRelationship.ABORT)
-                        current = ScopeRelationship.NOT_INCLUDED
+                TopicRelationship.NOT_INCLUDED ->
+                    if (current == TopicRelationship.ABORT)
+                        current = TopicRelationship.NOT_INCLUDED
                     else
-                        if (current == ScopeRelationship.FINAL)
-                            current = ScopeRelationship.INCLUDED
-                ScopeRelationship.FINAL ->
-                    if (current == ScopeRelationship.ABORT)
-                        current = ScopeRelationship.FINAL
+                        if (current == TopicRelationship.FINAL)
+                            current = TopicRelationship.INCLUDED
+                TopicRelationship.FINAL ->
+                    if (current == TopicRelationship.ABORT)
+                        current = TopicRelationship.FINAL
                     else
-                        if (current == ScopeRelationship.NOT_INCLUDED)
-                            current = ScopeRelationship.INCLUDED
-                ScopeRelationship.INCLUDED ->
-                    return ScopeRelationship.INCLUDED
+                        if (current == TopicRelationship.NOT_INCLUDED)
+                            current = TopicRelationship.INCLUDED
+                TopicRelationship.INCLUDED ->
+                    return TopicRelationship.INCLUDED
             }
         }
         return current
     }
 
     /**
-     * compares two scopes
+     * compares two topics
      * first one is final
-     * @return ScopeRelationship
+     * @return TopicRelationship
      */
-    override fun compatible(scope: Scope): ScopeRelationship {
-        //println("checking compatibility ${this.toList()} with ${scope.toList()}")
+    override fun compatible(topic: Topic): TopicRelationship {
+        //println("checking compatibility ${this.toList()} with ${topic.toList()}")
         val scopeList = toList()
-        val anotherScopeList = scope.toList()
+        val anotherScopeList = topic.toList()
         for (it in 0 until minOf(scopeList.size, anotherScopeList.size)) {
             //println("it = "+it)
             if (scopeList[it] != "*" &&
                     anotherScopeList[it] != "*" &&
                     scopeList[it] != anotherScopeList[it]) {
                 //println("ABORTING ${scopeList[it]} - ${anotherScopeList[it]}")
-                return ScopeRelationship.ABORT
+                return TopicRelationship.ABORT
             }
         }
         if (scopeList.size == anotherScopeList.size) {
             if (anotherScopeList.last() == "*")
-                return ScopeRelationship.INCLUDED
+                return TopicRelationship.INCLUDED
             else
-                return ScopeRelationship.FINAL
+                return TopicRelationship.FINAL
         } else if (scopeList.size > anotherScopeList.size) {
             if (anotherScopeList.last() == "*")
-                return ScopeRelationship.INCLUDED
+                return TopicRelationship.INCLUDED
             else
-                return ScopeRelationship.ABORT
+                return TopicRelationship.ABORT
         } else {
-            return ScopeRelationship.NOT_INCLUDED
+            return TopicRelationship.NOT_INCLUDED
             /*if (anotherScopeList[scopeList.lastIndex] == "*")
-                return ScopeRelationship.INCLUDED
+                return TopicRelationship.INCLUDED
             else
-                return ScopeRelationship.NOT_INCLUDED*/
+                return TopicRelationship.NOT_INCLUDED*/
         }
     }
 
     override fun equals(other: Any?): Boolean {
-        val scope = other as? RouteScope ?: return false
+        val scope = other as? RouteTopic ?: return false
         return scope.toString() == str
     }
 
-    override fun relationToSet(scopes: Collection<Scope>): ScopeRelationship {
-        return belongsTo(scopes)
+    override fun relationToSet(topics: Collection<Topic>): TopicRelationship {
+        return belongsTo(topics)
     }
 
     override val levelsCount: Int

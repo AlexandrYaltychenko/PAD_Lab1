@@ -70,6 +70,7 @@ ClassicSender sends messages without clientType.
 *In such case broker transforms message to routed message and sends it to the default queue*
 
 **Publisher details**
+
 In the beginning of session publisher sends CONNECTION message. After getting success response it may define its last will sending LAST_WILL message. Last will can be modified later.
 
 Publisher sends new NORMAL messages with pre-defined topic every PUBLISHER_INTERVAL. In case of planned disconnection it sends special DISCONNECT message.

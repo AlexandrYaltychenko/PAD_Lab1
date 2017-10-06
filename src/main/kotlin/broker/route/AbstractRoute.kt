@@ -1,8 +1,8 @@
 package broker.route
 
-import broker.Scope
-import broker.ScopeFactory
-import broker.ScopeRelationship
+import broker.Topic
+import broker.TopicFactory
+import broker.TopicRelationship
 import broker.pool.Subscriber
 import broker.queue.ExtendedQueue
 import broker.queue.QueueType
@@ -11,7 +11,7 @@ import kotlinx.coroutines.experimental.launch
 import protocol.RoutedMessage
 import java.util.concurrent.ConcurrentHashMap
 
-abstract class AbstractRoute(override val scope: Scope, override val name: String) : Route {
+abstract class AbstractRoute(override val topic: Topic, override val name: String) : Route {
     protected val routes: MutableMap<String, Route> = ConcurrentHashMap()
     protected abstract val messages: ExtendedQueue<RoutedMessage>
     override val subscribers: MutableSet<Subscriber> = mutableSetOf()
@@ -22,15 +22,15 @@ abstract class AbstractRoute(override val scope: Scope, override val name: Strin
     override val messageCount: Int
         get() = messages.size
 
-    override fun getMessages(scope: Scope): List<RoutedMessage> {
+    override fun getMessages(topic: Topic): List<RoutedMessage> {
         val msgList = mutableListOf<RoutedMessage>()
-        if (scope.hasNext()) {
+        if (topic.hasNext()) {
             val targetRoutes = mutableListOf<Route>()
-            val target = scope.peek()
+            val target = topic.peek()
             target?.apply {
                 if (target == "*") {
                     targetRoutes.addAll(routes.values)
-                    scope.next()
+                    topic.next()
                 } else {
                     val route = routes[target]
                     if (route != null)
@@ -38,23 +38,23 @@ abstract class AbstractRoute(override val scope: Scope, override val name: Strin
                 }
             }
             for (route in targetRoutes)
-                msgList.addAll(route.getMessages(scope))
+                msgList.addAll(route.getMessages(topic))
         } else {
             msgList.addAll(messages)
         }
         return msgList
     }
 
-    override suspend fun putMessage(scope: Scope, msg: RoutedMessage) {
-        if (scope.hasNext()) {
-            val target = scope.peek()
+    override suspend fun putMessage(topic: Topic, msg: RoutedMessage) {
+        if (topic.hasNext()) {
+            val target = topic.peek()
             target?.apply {
-                scope.next()
+                topic.next()
                 val route = routes[target]
                 if (route != null) {
-                    route.putMessage(scope, msg)
+                    route.putMessage(topic, msg)
                 } else {
-                    newRoute(ScopeFactory.appendToEnd(this@AbstractRoute.scope, target), target).putMessage(scope, msg)
+                    newRoute(TopicFactory.appendToEnd(this@AbstractRoute.topic, target), target).putMessage(topic, msg)
                 }
             }
         } else {
@@ -64,8 +64,8 @@ abstract class AbstractRoute(override val scope: Scope, override val name: Strin
         }
     }
 
-    private fun newRoute(scope: Scope, name: String): Route {
-        val route = TemporaryRoute(scope, name)
+    private fun newRoute(topic: Topic, name: String): Route {
+        val route = TemporaryRoute(topic, name)
         routes[name] = route
         for (subscriber in subscribers.union(transcribers))
             route.subscribe(subscriber)
@@ -73,10 +73,10 @@ abstract class AbstractRoute(override val scope: Scope, override val name: Strin
     }
 
     override fun subscribe(subscriber: Subscriber) {
-        val relationship = scope.belongsTo(subscriber.scopes)
-        if (relationship == ScopeRelationship.ABORT)
+        val relationship = topic.belongsTo(subscriber.topics)
+        if (relationship == TopicRelationship.ABORT)
             return
-        if (relationship != ScopeRelationship.NOT_INCLUDED) {
+        if (relationship != TopicRelationship.NOT_INCLUDED) {
             subscriber.isAttached = true
             subscribers.add(subscriber)
             launch(CommonPool) {
@@ -84,14 +84,14 @@ abstract class AbstractRoute(override val scope: Scope, override val name: Strin
             }
         } else
             transcribers.add(subscriber)
-        if (relationship != ScopeRelationship.FINAL)
+        if (relationship != TopicRelationship.FINAL)
             routes.values.map {
                 it.subscribe(subscriber)
             }
     }
 
     override fun unsubscribe(subscriber: Subscriber) {
-        if (scope.belongsTo(subscriber.scopes) == ScopeRelationship.ABORT) {
+        if (topic.belongsTo(subscriber.topics) == TopicRelationship.ABORT) {
             return
         }
         for (route in routes.values)
@@ -107,18 +107,18 @@ abstract class AbstractRoute(override val scope: Scope, override val name: Strin
         while (messages.isNotEmpty()) {
             val msg = messages.remove()
             for (subscriber in subscribers) {
-                subscriber.messagePublished(scope, msg)
+                subscriber.messagePublished(topic, msg)
             }
         }
     }
 
     override fun toString(): String {
-        return "Route $name with scope = $scope with routes = ${routes.keys} and ${messages.size} messages and ${subscribers.size} subscribers and ${transcribers.size} transcribers"
+        return "Route $name with topic = $topic with routes = ${routes.keys} and ${messages.size} messages and ${subscribers.size} subscribers and ${transcribers.size} transcribers"
     }
 
     override fun print() {
         println()
-        repeat(scope.levelsCount, { print("-") })
+        repeat(topic.levelsCount, { print("-") })
         print(toString())
         for (route in routes.values)
             route.print()

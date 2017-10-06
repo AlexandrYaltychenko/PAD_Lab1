@@ -1,32 +1,29 @@
 package broker.pool
 
-import broker.Scope
+import broker.Topic
 import kotlinx.coroutines.experimental.Job
 import kotlinx.coroutines.experimental.channels.Channel
-import kotlinx.coroutines.experimental.channels.consumeEach
 import kotlinx.coroutines.experimental.delay
-import kotlinx.coroutines.experimental.launch
 import protocol.Connection
 import protocol.RoutedMessage
-import util.encode
-import java.io.BufferedReader
-import java.io.PrintWriter
-import java.net.Socket
-import java.util.*
 
-class DefaultSubscriber(private val subscriberPool: SubscriberPool, vararg scopes: Scope, override val uid: String) : Subscriber {
-    override val scopes: MutableList<Scope> = scopes.toMutableList()
+class DefaultSubscriber(private val subscriberPool: SubscriberPool, vararg topics: Topic, override val uid: String) : Subscriber {
+    override val topics: MutableList<Topic> = topics.toMutableList()
     private val channel: Channel<RoutedMessage> = Channel()
-    private var job: Job? = null
     override var isAttached: Boolean = false
+    private var connection : Connection? = null
 
-    override suspend fun messagePublished(scope: Scope, message: RoutedMessage) {
+    override suspend fun messagePublished(topic: Topic, message: RoutedMessage) {
         channel.send(message)
     }
 
     override suspend fun handle(connection: Connection) {
+        this.connection = connection
         while (true) {
             val msg = channel.receive()
+            if (connection.isClosed){
+                break
+            }
             connection.writeMsg(msg)
             if (connection.writer.checkError()) {
                 break
@@ -38,7 +35,6 @@ class DefaultSubscriber(private val subscriberPool: SubscriberPool, vararg scope
     }
 
     suspend override fun stop() {
-        job?.cancel() //cancelling coroutine
         while (!channel.isEmpty) {
             channel.poll()
         }

@@ -5,6 +5,6 @@ import java.util.*
 
 
 fun main(args: Array<String>) = runBlocking {
-    println("enter scope to publish")
+    println("enter topic to publish")
     CustomExternalPublisher(UUID.randomUUID().toString(), readLine()?:"Default").run()
 }
