@@ -28,8 +28,8 @@ abstract class BaseClient(val uid: String, val port: Int, val host: String, val 
         return response
     }
 
-    fun createMessage(payload: String, messageType: MessageType, scope: String = Protocol.DEFAULT_ROUTE): RoutedMessage {
-        return RoutedMessage(clientType, uid, payload, scope,messageType)
+    fun createMessage(payload: String, messageType: MessageType, topic: String = Protocol.DEFAULT_ROUTE): RoutedMessage {
+        return RoutedMessage(clientType, uid, payload, topic,messageType)
     }
 
 }

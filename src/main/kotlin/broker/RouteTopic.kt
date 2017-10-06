@@ -41,8 +41,8 @@ class RouteTopic constructor(scope: String) : Topic {
     override fun belongsTo(topics: Collection<Topic>): TopicRelationship {
         //println("CALLED BELONGS")
         var current = TopicRelationship.ABORT
-        for (scope in topics) {
-            val relationship = compatible(scope)
+        for (topic in topics) {
+            val relationship = compatible(topic)
             //println("GOT = " + relationship)
             when (relationship) {
                 TopicRelationship.NOT_INCLUDED ->

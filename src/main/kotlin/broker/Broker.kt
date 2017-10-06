@@ -34,7 +34,7 @@ class Broker : SubscriberPool {
             when (msg.messageType) {
                 MessageType.CONNECT -> {
                     println("New publisher connected")
-                    publisherPool.addPublisher(DefaultPublisher(msg.clientUid, msg.payload.toLongOrNull() ?: 10000L, scope = msg.topic))
+                    publisherPool.addPublisher(DefaultPublisher(msg.clientUid, msg.payload.toLongOrNull() ?: 10000L, topic = msg.topic))
                     connection.writeMsg(RoutedMessage(ClientType.SERVER, payload = "client connected", messageType = MessageType.NORMAL))
                 }
                 MessageType.LAST_WILL -> {
@@ -135,23 +135,23 @@ class Broker : SubscriberPool {
     private fun preparePermanentRoutes() {
         try {
             val json = JsonParser().parse(File("permanent.json").bufferedReader().use { it.readText() }).asJsonArray
-            loadScopes(root, json)
+            loadTopics(root, json)
         } catch (e: Exception) {
             root.addRoute(PermanentRoute(TopicFactory.fromString("root.Apple")))
             root.addRoute(PermanentRoute(TopicFactory.fromString("root.Google")))
         }
     }
 
-    private fun loadScopes(root: Route, array: JsonArray) {
+    private fun loadTopics(root: Route, array: JsonArray) {
         if (array.size() == 0)
             return
         for (obj in array) {
             val routeObj = obj.asJsonObject
-            val scope = TopicFactory.fromString("${root.topic}.${routeObj.get("name").asString}")
-            val newRoute = PermanentRoute(scope)
+            val topic = TopicFactory.fromString("${root.topic}.${routeObj.get("name").asString}")
+            val newRoute = PermanentRoute(topic)
             root.addRoute(newRoute)
             if (routeObj.has("routes"))
-                loadScopes(newRoute, routeObj.getAsJsonArray("routes"))
+                loadTopics(newRoute, routeObj.getAsJsonArray("routes"))
         }
     }
 
