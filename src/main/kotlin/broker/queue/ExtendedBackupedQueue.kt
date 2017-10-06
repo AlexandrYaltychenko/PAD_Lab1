@@ -6,7 +6,7 @@ import java.util.*
 
 interface ExtendedBackupedQueue<T> : ExtendedQueue<T> {
     fun save(fileName: String) {}
-    fun load(fileName: String, clazz : TypeToken<Queue<T>>) {}
+    fun load(fileName: String, clazz: TypeToken<Queue<T>>) {}
     fun backUp(force: Boolean) {}
     var backUpItemsLimit: Int
     var backUpInterval: Long
@@ -14,6 +14,6 @@ interface ExtendedBackupedQueue<T> : ExtendedQueue<T> {
     val afterBackupItemsCount: Int
     val DEFAULT_BACKUP_LIMIT
         get() = Protocol.DEFAULT_BACKUP_LIMIT
-    val DEFAULT_BACKUP_INTERVAL : Long
+    val DEFAULT_BACKUP_INTERVAL: Long
         get() = Protocol.DEFAULT_BACKUP_INTERVAL
 }

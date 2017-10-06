@@ -63,18 +63,6 @@ These constants are used in project:
 - CLIENT_INTERVAL = 1000 *(interval between client reconnections)*
 - PUBLISHER_INTERVAL = 15000 *(interval between publisher reconnections)*
 
-**Subscriber details**
-
-NewSender sends routed messages with clientType = SENDER and the selected TOPIC
-ClassicSender sends messages without clientType.
-*In such case broker transforms message to routed message and sends it to the default queue*
-
-**Publisher details**
-
-In the beginning of session publisher sends CONNECTION message. After getting success response it may define its last will sending LAST_WILL message. Last will can be modified later.
-
-Publisher sends new NORMAL messages with pre-defined topic every PUBLISHER_INTERVAL. In case of planned disconnection it sends special DISCONNECT message.
-
 **Broker details**
 
 Broker contains of two big parts: PublisherPool and SubscriberPool.
@@ -83,6 +71,34 @@ The first one is implemented by separate DefaultPublisherPool, the second is imp
 *PublisherPool* manages dictionary (uid, publisher) of publishers and periodically checks registered publishers in system for death. In case of death of the publisher, its last will will be broadcasted to all subscribers with corresponding topic.
 
 *SubscriberPool* manages composite structure of routes (every route represents a composite structure with lists of its subscribers and sub-routes).
+
+**Topic details**
+
+There are two types of topics: **final** and **not final**.
+- Final topics cannot contain any wildcards.
+- Not final topics can contain wildcard '*'. Final topiс represents a special case of not final topic.
+
+**Final topics** 
+
+Example of final topics: *Apple, Microsoft.Products, Google.News.Pixel*
+Publisher can use and declare in its messages only final topics!!!
+
+**Not final topics**
+
+Example of not final topics: 
+- Apple.\* (all final topics >=2 routes which have Apple as root, ex.: Apple.Products, Apple.Products.iPhone, Apple.News.) **Attention: Apple (1 route) topic is not included, use simple 'Apple' to subscribe to Apple**
+- Apple.Products.iPhone.\*, (all final topics with >=4 routes and Apple.Products.iPhone as root)
+- Apple.\*.News (all final topics with 3 routes, Apple as head and News as Leaf)
+
+**Subscriber details**
+
+Subscriber sends CONNECTION message in the beginning of sesstion. Broker handles it and subscribes the client to the corresponding routes (by provided topic). In case of planned disconnection subscriber sends DISCONNECT message, which is processed by the broker (subscriber is unsubscribed from all topics).
+
+**Publisher details**
+
+In the beginning of session publisher sends CONNECTION message. After getting success response it may define its last will sending LAST_WILL message. Last will can be modified later.
+
+Publisher sends new NORMAL messages with pre-defined topic every PUBLISHER_INTERVAL. In case of planned disconnection it sends special DISCONNECT message.
 
 **Persistance details**
 
@@ -93,4 +109,5 @@ The first one is implemented by separate DefaultPublisherPool, the second is imp
 
 + Every CRON_INTERVAL queues get signal to make its cron job, in our case this job is backup. Every route decides itself if backup is needed (special params are used: backUpItemsLimit, backUpInterval).
 + Every CRON_INTERVAL system tries to detect dead publishers and process them.
+
 
