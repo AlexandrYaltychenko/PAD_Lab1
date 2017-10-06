@@ -8,7 +8,6 @@ interface ExtendedBackupedQueue<T> : ExtendedQueue<T> {
     fun save(fileName: String) {}
     fun load(fileName: String, clazz : TypeToken<Queue<T>>) {}
     fun backUp(force: Boolean) {}
-    fun shouldDestroy() = false
     var backUpItemsLimit: Int
     var backUpInterval: Long
     val lastBackUp: Long
