@@ -45,7 +45,7 @@ You can run the following instances:
 *The communication between the server and the client (sender or receiver) is implemented by messages.*
 
 The improved implementation of the protocol (which supports routing) is based on data-class RoutedMessage, which contains:
-+ clientType (type of client: SENDER, RECEIVER, CLIENT)
++ clientType (type of client: PUBLISHER, SUBSCRIBER, SERVER)
 + clientUid (unique id of client)
 + payload (data field)
 + topic (topic of message, used by broker for routing)
