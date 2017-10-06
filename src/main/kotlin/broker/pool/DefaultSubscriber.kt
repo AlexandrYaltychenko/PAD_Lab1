@@ -14,16 +14,17 @@ import java.io.PrintWriter
 import java.net.Socket
 import java.util.*
 
-class DefaultSubscriber(private val subscriberPool: SubscriberPool, vararg scopes: Scope, override val uid : String) : Subscriber {
+class DefaultSubscriber(private val subscriberPool: SubscriberPool, vararg scopes: Scope, override val uid: String) : Subscriber {
     override val scopes: MutableList<Scope> = scopes.toMutableList()
     private val channel: Channel<RoutedMessage> = Channel()
-    private var job : Job? = null
+    private var job: Job? = null
+    override var isAttached: Boolean = false
 
     override suspend fun messagePublished(scope: Scope, message: RoutedMessage) {
         channel.send(message)
     }
 
-    override suspend fun handle(connection : Connection) {
+    override suspend fun handle(connection: Connection) {
         while (true) {
             val msg = channel.receive()
             connection.writeMsg(msg)
@@ -38,7 +39,7 @@ class DefaultSubscriber(private val subscriberPool: SubscriberPool, vararg scope
 
     suspend override fun stop() {
         job?.cancel() //cancelling coroutine
-        while (!channel.isEmpty){
+        while (!channel.isEmpty) {
             channel.poll()
         }
     }

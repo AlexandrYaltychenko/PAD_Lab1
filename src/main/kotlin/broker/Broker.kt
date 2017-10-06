@@ -53,7 +53,7 @@ class Broker : SubscriberPool {
 
             }
         } else if (msg.clientType == ClientType.SUBSCRIBER) {
-            when (msg.messageType){
+            when (msg.messageType) {
                 MessageType.DISCONNECT -> {
                     println("disconnecting subscriber")
                     val subscriber = subscribers[msg.clientUid]
@@ -75,12 +75,22 @@ class Broker : SubscriberPool {
         root.putMessage(ScopeFactory.fromString(msg.scope), msg)
     }
 
-    private suspend fun handleSubscriber(connection: Connection, msg : RoutedMessage) {
+    private suspend fun handleSubscriber(connection: Connection, msg: RoutedMessage) {
         println("handling new subscriber ${msg.clientUid}")
         val subscriber: Subscriber = DefaultSubscriber(this, ScopeFactory.fromString("root.${msg.scope}"), uid = msg.clientUid)
-        subscribers[msg.clientUid] = subscriber
         root.subscribe(subscriber)
-        subscriber.handle(connection)
+        if (subscriber.isAttached){
+            println("Subscription accepted!")
+            subscribers[msg.clientUid] = subscriber
+            subscriber.handle(connection)
+        }
+        else {
+            println("Error! No routes found...")
+            unsubscribe(subscriber)
+            connection.writeMsg(RoutedMessage(clientType = ClientType.SERVER,payload = "No such route",scope = msg.scope, messageType = MessageType.ERROR))
+            connection.close()
+            println("error sent!")
+        }
     }
 
     override fun subscribe(subscriber: Subscriber) {
@@ -88,7 +98,6 @@ class Broker : SubscriberPool {
     }
 
     override fun unsubscribe(subscriber: Subscriber) {
-        println("unsubscribing...")
         root.unsubscribe(subscriber)
     }
 
