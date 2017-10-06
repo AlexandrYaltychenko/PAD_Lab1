@@ -5,5 +5,5 @@ import java.util.*
 
 fun main(args: Array<String>) = runBlocking {
     println("enter the scope to subscribe...")
-    CustomSubscriber(UUID.randomUUID().toString(), readLine() ?: "*").run()
+    CustomExternalSubscriber(UUID.randomUUID().toString(), readLine() ?: "*").run()
 }

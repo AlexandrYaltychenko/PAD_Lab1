@@ -10,6 +10,6 @@ object Protocol {
     val CLIENT_INTERVAL: Long = 1000
     val DEFAULT_BACKUP_INTERVAL : Long = 60000
     val DEFAULT_BACKUP_LIMIT : Int = 100
-    val DEFAULT_PUBLISHER_INTERVAL = 10000
+    val DEFAULT_PUBLISHER_INTERVAL = 15000
     val BACKUP_DIR = "backup/"
 }

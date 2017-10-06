@@ -12,7 +12,7 @@ import java.io.PrintWriter
 import java.net.Socket
 import java.util.*
 
-class CustomSubscriber(private val clientId: String, private val scope: String) : ExternalSubscriber {
+class CustomExternalSubscriber(private val clientId: String, private val scope: String) : ExternalSubscriber {
     private var isConnected: Boolean = true
     private suspend fun processTask() {
         val client = Socket(Protocol.HOST, Protocol.PORT_NUMBER)

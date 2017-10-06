@@ -10,7 +10,7 @@ import java.net.Socket
 interface Subscriber {
     val uid : String
     val scopes : List<Scope>
-    val isAttached : Boolean
+    var isAttached : Boolean
     suspend fun messagePublished(scope : Scope, message : RoutedMessage)
     suspend fun handle(connection : Connection)
     suspend fun stop()

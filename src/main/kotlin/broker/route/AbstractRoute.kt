@@ -77,6 +77,7 @@ abstract class AbstractRoute(override val scope: Scope, override val name: Strin
         if (relationship == ScopeRelationship.ABORT)
             return
         if (relationship != ScopeRelationship.NOT_INCLUDED) {
+            subscriber.isAttached = true
             subscribers.add(subscriber)
             launch(CommonPool) {
                 notifySubscribers()

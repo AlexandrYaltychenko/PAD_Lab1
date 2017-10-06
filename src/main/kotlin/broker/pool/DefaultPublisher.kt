@@ -11,7 +11,7 @@ class DefaultPublisher(override val uid: String, override val interval: Long = 1
     override val isDead: Boolean
         get() : Boolean {
             println("checking death... ")
-            return System.currentTimeMillis() - lastMsg > interval
+            return System.currentTimeMillis() - lastMsg > interval*1.25
         }
 
     override fun confirm() {

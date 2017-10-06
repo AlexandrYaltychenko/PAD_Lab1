@@ -40,7 +40,7 @@ class CustomExternalPublisher(private val clientId: String, private val scope: S
     }
 
     private fun initConnection(): Boolean {
-        var response: RoutedMessage? = sendResponsedMessage(createMessage("15000", MessageType.CONNECT, scope)) ?: return false
+        var response: RoutedMessage? = sendResponsedMessage(createMessage(Protocol.DEFAULT_PUBLISHER_INTERVAL.toString(), MessageType.CONNECT, scope)) ?: return false
         println(response)
         response = sendResponsedMessage(createMessage("Something made me not responding... Alarm!", MessageType.LAST_WILL, scope))
         println(response)
