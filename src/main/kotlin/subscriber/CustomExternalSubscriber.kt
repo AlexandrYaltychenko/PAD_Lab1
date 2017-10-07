@@ -22,7 +22,7 @@ class CustomExternalSubscriber(private val clientId: String) : ExternalSubscribe
             isConnected = true
             val response = connection.readMsg()
             println("PROCESSED " + response)
-            if (response?.messageType == MessageType.ERROR) {
+            if (response?.messageType == MessageType.ERROR || response == null) {
                 isConnected = false
                 println("stopping...")
                 break

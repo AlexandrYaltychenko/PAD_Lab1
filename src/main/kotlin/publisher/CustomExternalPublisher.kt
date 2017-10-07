@@ -7,7 +7,7 @@ import kotlinx.coroutines.experimental.launch
 import protocol.*
 import java.util.*
 
-class CustomExternalPublisher(private val clientId: String, private val topic: String) : BaseClient(clientId,
+class CustomExternalPublisher(private val clientId: String, private val interval : Long = Protocol.CLIENT_INTERVAL, private val topic: String) : BaseClient(clientId,
         Protocol.PORT_NUMBER,
         Protocol.HOST, ClientType.PUBLISHER), ExternalPublisher {
     private var job : Job? = null
@@ -15,7 +15,7 @@ class CustomExternalPublisher(private val clientId: String, private val topic: S
         while (true) {
             println("publishing message... to $topic")
             sendNoResponseMessage(createMessage(UUID.randomUUID().toString(), MessageType.NORMAL, topic))
-            delay(Protocol.CLIENT_INTERVAL)
+            delay(interval)
         }
     }
 

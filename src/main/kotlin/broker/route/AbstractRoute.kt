@@ -9,13 +9,14 @@ import broker.queue.QueueType
 import kotlinx.coroutines.experimental.CommonPool
 import kotlinx.coroutines.experimental.launch
 import protocol.RoutedMessage
+import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 
 abstract class AbstractRoute(override val topic: Topic, override val name: String) : Route {
     protected val routes: MutableMap<String, Route> = ConcurrentHashMap()
     protected abstract val messages: ExtendedQueue<RoutedMessage>
-    override val subscribers: MutableSet<Subscriber> = mutableSetOf()
-    private val transcribers: MutableSet<Subscriber> = mutableSetOf()
+    override val subscribers: MutableSet<Subscriber> = Collections.synchronizedSet(mutableSetOf())
+    private val transcribers: MutableSet<Subscriber> = Collections.synchronizedSet(mutableSetOf())
     override val routeCount: Int
         get() = routes.size
     override var lastMessage: Long = System.currentTimeMillis()
@@ -68,26 +69,50 @@ abstract class AbstractRoute(override val topic: Topic, override val name: Strin
         val route = TemporaryRoute(topic, name)
         routes[name] = route
         for (subscriber in subscribers.union(transcribers))
-            route.subscribe(subscriber)
+            route.subscribe(topic,subscriber)
         return route
     }
 
     override fun subscribe(subscriber: Subscriber) {
-        val relationship = topic.belongsTo(subscriber.topics)
-        if (relationship == TopicRelationship.ABORT)
+        val relationship = this.topic.belongsTo(subscriber.topics)
+        if (relationship == TopicRelationship.ABORT) {
             return
+        }
         if (relationship != TopicRelationship.NOT_INCLUDED) {
-            subscriber.isAttached = true
             subscribers.add(subscriber)
             launch(CommonPool) {
                 notifySubscribers()
             }
         } else
             transcribers.add(subscriber)
-        if (relationship != TopicRelationship.FINAL)
+        if (relationship != TopicRelationship.FINAL) {
             routes.values.map {
                 it.subscribe(subscriber)
             }
+        }
+    }
+
+    override fun subscribe(topic: Topic, subscriber: Subscriber) : TopicRelationship{
+        val relationship = this.topic.compatible(topic)
+        if (relationship == TopicRelationship.ABORT) {
+            return TopicRelationship.ABORT
+        }
+        var result = TopicRelationship.NOT_INCLUDED
+        if (relationship != TopicRelationship.NOT_INCLUDED) {
+            result = relationship
+            subscribers.add(subscriber)
+            launch(CommonPool) {
+                notifySubscribers()
+            }
+        } else
+            transcribers.add(subscriber)
+        if (relationship != TopicRelationship.FINAL) {
+            if (routes.values.map {
+                it.subscribe(topic, subscriber)
+            }.toList().find { it != TopicRelationship.ABORT} != null)
+                result = TopicRelationship.INCLUDED
+        }
+        return result
     }
 
     override fun unsubscribe(subscriber: Subscriber) {
@@ -96,6 +121,16 @@ abstract class AbstractRoute(override val topic: Topic, override val name: Strin
         }
         for (route in routes.values)
             route.unsubscribe(subscriber)
+        subscribers.remove(subscriber)
+        transcribers.remove(subscriber)
+    }
+
+    override fun unsubscribe(topic: Topic, subscriber: Subscriber) {
+        if (this.topic.compatible(topic) == TopicRelationship.ABORT) {
+            return
+        }
+        for (route in routes.values)
+            route.unsubscribe(topic,subscriber)
         subscribers.remove(subscriber)
         transcribers.remove(subscriber)
     }
@@ -113,7 +148,7 @@ abstract class AbstractRoute(override val topic: Topic, override val name: Strin
     }
 
     override fun toString(): String {
-        return "Route $name with topic = $topic with routes = ${routes.keys} and ${messages.size} messages and ${subscribers.size} subscribers and ${transcribers.size} transcribers"
+        return "Route $name with topic = $topic with routes = ${routes.keys} and ${messages.size} messages and ${subscribers.size} subscribers"
     }
 
     override fun print() {

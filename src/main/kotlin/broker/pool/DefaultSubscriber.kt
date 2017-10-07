@@ -9,7 +9,6 @@ import protocol.RoutedMessage
 class DefaultSubscriber(private val subscriberPool: SubscriberPool, topics : List<Topic>, override val uid: String) : Subscriber {
     override val topics: MutableList<Topic> = topics.toMutableList()
     private val channel: Channel<RoutedMessage> = Channel()
-    override var isAttached: Boolean = false
     private var connection : Connection? = null
 
     override suspend fun messagePublished(topic: Topic, message: RoutedMessage) {

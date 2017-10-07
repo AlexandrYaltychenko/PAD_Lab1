@@ -1,6 +1,7 @@
 package broker.route
 
 import broker.Topic
+import broker.TopicRelationship
 import broker.pool.Subscriber
 import broker.queue.QueueType
 import protocol.RoutedMessage
@@ -16,7 +17,9 @@ interface Route {
     fun getMessages(topic: Topic) : List<RoutedMessage>
     suspend fun putMessage(topic: Topic, msg : RoutedMessage)
     fun subscribe(subscriber: Subscriber)
+    fun subscribe(topic : Topic, subscriber: Subscriber) : TopicRelationship
     fun unsubscribe(subscriber: Subscriber)
+    fun unsubscribe(topic : Topic, subscriber : Subscriber)
     fun addRoute(route : Route)
     fun print()
     fun cron()

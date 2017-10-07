@@ -77,24 +77,36 @@ class Broker : SubscriberPool {
 
     private suspend fun handleSubscriber(connection: Connection, msg: RoutedMessage) {
         println("handling new subscriber ${msg.clientUid}")
-        val subscriber: Subscriber = DefaultSubscriber(this, TopicFactory.fromListString("root",msg.topic), uid = msg.clientUid)
-        root.subscribe(subscriber)
-        if (subscriber.isAttached){
-            println("Subscription accepted!")
-            subscribers[msg.clientUid] = subscriber
-            subscriber.handle(connection)
+        val subscriber: Subscriber = DefaultSubscriber(this, TopicFactory.fromListString("root", msg.topic), uid = msg.clientUid)
+        val invalidTopics: MutableList<Topic> = mutableListOf()
+        for (topic in subscriber.topics) {
+            val result = root.subscribe(topic, subscriber)
+            if (result == TopicRelationship.INCLUDED || result == TopicRelationship.FINAL) {
+                subscribers[msg.clientUid] = subscriber
+            } else {
+                if (result == TopicRelationship.NOT_INCLUDED)
+                    root.unsubscribe(topic, subscriber)
+                invalidTopics.add(topic)
+            }
         }
-        else {
-            println("Error! No routes found...")
-            unsubscribe(subscriber)
-            connection.writeMsg(RoutedMessage(clientType = ClientType.SERVER,payload = "No such route", topic = msg.topic, messageType = MessageType.ERROR))
+        if (invalidTopics.size == subscriber.topics.size) {
+            println("error! subscription rejected: no routes found!")
+            connection.writeMsg(RoutedMessage(clientType = ClientType.SERVER, payload = "No such route! Subscriber not attached!", topic = msg.topic, messageType = MessageType.ERROR))
             connection.close()
-            println("error sent!")
+            return
+        } else if (invalidTopics.size > 0) {
+            println("warning! some topics were not found. partial subscription!")
+            connection.writeMsg(RoutedMessage(clientType = ClientType.SERVER, payload = "No such routes: ${invalidTopics.joinToString(",") { it.toString() }}", topic = msg.topic, messageType = MessageType.WARNING))
+        } else {
+            println("successful subscription!")
+            connection.writeMsg(RoutedMessage(clientType = ClientType.SERVER, payload = "success!", topic = msg.topic, messageType = MessageType.NORMAL))
         }
+        subscriber.handle(connection)
     }
 
     override fun subscribe(subscriber: Subscriber) {
-        root.subscribe(subscriber)
+        for (topic in subscriber.topics)
+            root.subscribe(topic, subscriber)
     }
 
     override fun unsubscribe(subscriber: Subscriber) {
