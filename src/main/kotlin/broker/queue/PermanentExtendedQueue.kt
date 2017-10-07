@@ -8,9 +8,9 @@ import java.util.*
 import java.util.concurrent.LinkedBlockingQueue
 
 
-class PermanentExtendedQueue<T>(queue: Queue<T>, name: String, tryToReload: Boolean = true, type : TypeToken<Queue<T>>) :
-        AbstractExtendedQueue<T>(queue,name), ExtendedBackupedQueue<T> {
-    constructor(name: String, tryToReload: Boolean = true, clazz : TypeToken<Queue<T>>) : this(LinkedBlockingQueue<T>(), name, tryToReload, clazz)
+class PermanentExtendedQueue<T>(queue: Queue<T>, name: String, tryToReload: Boolean = true, type: TypeToken<Queue<T>>) :
+        AbstractExtendedQueue<T>(queue, name), ExtendedBackupedQueue<T> {
+    constructor(name: String, tryToReload: Boolean = true, clazz: TypeToken<Queue<T>>) : this(LinkedBlockingQueue<T>(), name, tryToReload, clazz)
 
     init {
         if (tryToReload)
@@ -46,19 +46,21 @@ class PermanentExtendedQueue<T>(queue: Queue<T>, name: String, tryToReload: Bool
 
     }
 
-    @Synchronized override fun save(fileName: String) {
-        File(Protocol.BACKUP_DIR+fileName).printWriter().use { out ->
+    @Synchronized
+    override fun save(fileName: String) {
+        File(Protocol.BACKUP_DIR + fileName).printWriter().use { out ->
             synchronized(this) {
                 out.write(encode())
             }
         }
     }
 
-    override fun load(fileName: String, clazz : TypeToken<Queue<T>>) {
+    @Synchronized
+    override fun load(fileName: String, clazz: TypeToken<Queue<T>>) {
         println("trying to load $name queue from $name.json...")
         try {
-            decode(File(Protocol.BACKUP_DIR+fileName).bufferedReader().use { it.readText() }, clazz)
-        } catch (e : IOException){
+            decode(File(Protocol.BACKUP_DIR + fileName).bufferedReader().use { it.readText() }, clazz)
+        } catch (e: IOException) {
             //println("loading failed...")
         }
     }

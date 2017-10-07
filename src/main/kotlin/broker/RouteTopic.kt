@@ -70,15 +70,12 @@ class RouteTopic constructor(scope: String) : Topic {
      * @return TopicRelationship
      */
     override fun compatible(topic: Topic): TopicRelationship {
-        //println("checking compatibility ${this.toList()} with ${topic.toList()}")
         val scopeList = toList()
         val anotherScopeList = topic.toList()
         for (it in 0 until minOf(scopeList.size, anotherScopeList.size)) {
-            //println("it = "+it)
             if (scopeList[it] != "*" &&
                     anotherScopeList[it] != "*" &&
                     scopeList[it] != anotherScopeList[it]) {
-                //println("ABORTING ${scopeList[it]} - ${anotherScopeList[it]}")
                 return TopicRelationship.ABORT
             }
         }
@@ -94,16 +91,7 @@ class RouteTopic constructor(scope: String) : Topic {
                 return TopicRelationship.ABORT
         } else {
             return TopicRelationship.NOT_INCLUDED
-            /*if (anotherScopeList[scopeList.lastIndex] == "*")
-                return TopicRelationship.INCLUDED
-            else
-                return TopicRelationship.NOT_INCLUDED*/
         }
-    }
-
-    override fun equals(other: Any?): Boolean {
-        val scope = other as? RouteTopic ?: return false
-        return scope.toString() == str
     }
 
     override fun relationToSet(topics: Collection<Topic>): TopicRelationship {

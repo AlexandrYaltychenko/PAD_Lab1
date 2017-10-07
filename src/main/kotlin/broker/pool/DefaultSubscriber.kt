@@ -1,13 +1,12 @@
 package broker.pool
 
 import broker.Topic
-import kotlinx.coroutines.experimental.Job
 import kotlinx.coroutines.experimental.channels.Channel
 import kotlinx.coroutines.experimental.delay
 import protocol.Connection
 import protocol.RoutedMessage
 
-class DefaultSubscriber(private val subscriberPool: SubscriberPool, vararg topics: Topic, override val uid: String) : Subscriber {
+class DefaultSubscriber(private val subscriberPool: SubscriberPool, topics : List<Topic>, override val uid: String) : Subscriber {
     override val topics: MutableList<Topic> = topics.toMutableList()
     private val channel: Channel<RoutedMessage> = Channel()
     override var isAttached: Boolean = false

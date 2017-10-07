@@ -77,7 +77,7 @@ class Broker : SubscriberPool {
 
     private suspend fun handleSubscriber(connection: Connection, msg: RoutedMessage) {
         println("handling new subscriber ${msg.clientUid}")
-        val subscriber: Subscriber = DefaultSubscriber(this, TopicFactory.fromString("root.${msg.topic}"), uid = msg.clientUid)
+        val subscriber: Subscriber = DefaultSubscriber(this, TopicFactory.fromListString("root",msg.topic), uid = msg.clientUid)
         root.subscribe(subscriber)
         if (subscriber.isAttached){
             println("Subscription accepted!")
