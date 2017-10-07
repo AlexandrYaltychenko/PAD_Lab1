@@ -14,11 +14,11 @@ import java.net.Socket
 import java.util.*
 
 
-class Broker : SubscriberPool {
+class Broker {
     private val timer: Timer = Timer()
     private val pingTimer = Timer()
-    private val root: Route = PermanentRoute(TopicFactory.fromString("root"), "root")
-    private val publisherPool = DefaultPublisherPool(this)
+    private val subscriberPool = DefaultSubscriberPool()
+    private val publisherPool = DefaultPublisherPool(subscriberPool)
     private val subscribers = mutableMapOf<String, Subscriber>()
 
 
@@ -48,7 +48,7 @@ class Broker : SubscriberPool {
                 }
                 else -> {
                     publisherPool.confirmPublisher(msg.clientUid)
-                    root.putMessage(TopicFactory.fromString(msg.topic), msg)
+                    subscriberPool.putMessage(TopicFactory.fromString(msg.topic), msg)
                 }
 
             }
@@ -62,7 +62,7 @@ class Broker : SubscriberPool {
                     subscriber?.let {
                         println("unsubscribing ${msg.clientUid}")
                         subscriber.stop()
-                        unsubscribe(subscriber)
+                        subscriberPool.unsubscribe(subscriber)
                     }
                 }
                 else -> handleSubscriber(connection, msg)
@@ -71,21 +71,17 @@ class Broker : SubscriberPool {
         connection.close()
     }
 
-    override suspend fun notify(msg: RoutedMessage) {
-        root.putMessage(TopicFactory.fromString(msg.topic), msg)
-    }
-
     private suspend fun handleSubscriber(connection: Connection, msg: RoutedMessage) {
         println("handling new subscriber ${msg.clientUid}")
-        val subscriber: Subscriber = DefaultSubscriber(this, TopicFactory.fromListString("root", msg.topic), uid = msg.clientUid)
+        val subscriber: Subscriber = DefaultSubscriber(subscriberPool, TopicFactory.fromListString("root", msg.topic), uid = msg.clientUid)
         val invalidTopics: MutableList<Topic> = mutableListOf()
         for (topic in subscriber.topics) {
-            val result = root.subscribe(topic, subscriber)
+            val result = subscriberPool.subscribe(topic, subscriber)
             if (result == TopicRelationship.INCLUDED || result == TopicRelationship.FINAL) {
                 subscribers[msg.clientUid] = subscriber
             } else {
                 if (result == TopicRelationship.NOT_INCLUDED)
-                    root.unsubscribe(topic, subscriber)
+                    subscriberPool.unsubscribe(topic, subscriber)
                 invalidTopics.add(topic)
             }
         }
@@ -104,27 +100,19 @@ class Broker : SubscriberPool {
         subscriber.handle(connection)
     }
 
-    override fun subscribe(subscriber: Subscriber) {
-        for (topic in subscriber.topics)
-            root.subscribe(topic, subscriber)
-    }
-
-    override fun unsubscribe(subscriber: Subscriber) {
-        root.unsubscribe(subscriber)
-    }
 
     suspend fun runServer() {
         println("Starting server...")
         preparePermanentRoutes()
         Runtime.getRuntime().addShutdownHook(Thread {
-            root.onStop()
+            subscriberPool.onStop()
         })
         val server = ServerSocket(Protocol.PORT_NUMBER)
         timer.schedule(object : TimerTask() {
             override fun run() {
-                root.cron()
+                subscriberPool.cron()
                 println()
-                root.print()
+                subscriberPool.print()
                 println()
                 println()
             }
@@ -147,10 +135,10 @@ class Broker : SubscriberPool {
     private fun preparePermanentRoutes() {
         try {
             val json = JsonParser().parse(File("permanent.json").bufferedReader().use { it.readText() }).asJsonArray
-            loadTopics(root, json)
+            loadTopics(subscriberPool, json)
         } catch (e: Exception) {
-            root.addRoute(PermanentRoute(TopicFactory.fromString("root.Apple")))
-            root.addRoute(PermanentRoute(TopicFactory.fromString("root.Google")))
+            subscriberPool.addRoute(PermanentRoute(TopicFactory.fromString("root.Apple")))
+            subscriberPool.addRoute(PermanentRoute(TopicFactory.fromString("root.Google")))
         }
     }
 

@@ -10,12 +10,10 @@ class DefaultPublisher(override val uid: String, override val interval: Long = 1
     override val topic: Topic = TopicFactory.fromString(topic)
     override val isDead: Boolean
         get() : Boolean {
-            println("checking death... ")
             return System.currentTimeMillis() - lastMsg > interval*1.25
         }
 
     override fun confirm() {
-        println("publisher confirmed")
         lastMsg = System.currentTimeMillis()
     }
 }
